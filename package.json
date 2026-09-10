@@ -1,0 +1,23 @@
+{
+  "name": "fainted-discord-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/desktop.js start",
+    "setup:ai": "node --env-file-if-exists=.env src/desktop.js setup",
+    "test:ai": "node --env-file-if-exists=.env src/desktop.js test-ai",
+    "register": "node --env-file-if-exists=.env src/register.js",
+    "check": "node --env-file-if-exists=.env src/check.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "discord.js": "14.27.0"
+  },
+  "devDependencies": {
+    "prettier": "3.6.2"
+  }
+}
