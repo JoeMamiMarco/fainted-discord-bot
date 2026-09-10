@@ -269,7 +269,7 @@ export function createMemberDashboard({
           bytes = 0;
         for await (const chunk of req) {
           bytes += chunk.length;
-          if (bytes > 75000) return send(413, { error: "Request too large." });
+          if (bytes > (path === "/api/chats" ? 12000000 : 75000)) return send(413, { error: "Request too large." });
           text += chunk;
         }
         body = JSON.parse(text || "{}");
@@ -375,7 +375,7 @@ export function createMemberDashboard({
                 body.id,
                 body.text,
                 request,
-                { ai: body.ai },
+                { ai: body.ai, screenshot: body.screenshot },
               ),
             );
         }

@@ -7,7 +7,7 @@ const esc = (x) =>
       ],
   );
 export function conversationMarkup() {
-  return `<div id="conversations" class="conversation-layout"><aside class="chat-sidebar"><div class="section-head"><h3>Saved chats</h3><button id="new-chat" title="New conversation">＋</button></div><div id="chat-list">Loading conversations…</div><small>Private to your account and this server.</small></aside><section class="chat-main"><div id="chat-messages" aria-live="polite"></div><form id="chat-compose"><label for="chat-input">Your message</label><textarea id="chat-input" maxlength="1500" rows="4" placeholder="Describe what you want to do…" required></textarea><div class="actions"><label id="instant-option"><input id="chat-ai" type="checkbox" checked> Use local AI</label><button class="primary" type="submit">Send ↗</button></div><p id="chat-status" role="status"></p></form></section></div>`;
+  return `<div id="conversations" class="conversation-layout"><aside class="chat-sidebar"><div class="section-head"><h3>Saved chats</h3><button id="new-chat" title="New conversation">＋</button></div><div id="chat-list">Loading conversations…</div><small>Private to your account and this server.</small></aside><section class="chat-main"><div id="chat-messages" aria-live="polite"></div><form id="chat-compose"><label for="chat-input">Your message</label><textarea id="chat-input" maxlength="1500" rows="4" placeholder="Describe what you want to do…" required></textarea><label id="screenshot-option">Copy a server screenshot (PNG/JPEG/WebP, up to 8 MB)<input id="chat-image" type="file" accept="image/png,image/jpeg,image/webp"></label><div class="actions"><label id="instant-option"><input id="chat-ai" type="checkbox" checked> Use local AI</label><button class="primary" type="submit">Send ↗</button></div><p id="chat-status" role="status"></p></form></section></div>`;
 }
 export async function mountConversations({
   api,
@@ -23,6 +23,7 @@ export async function mountConversations({
   let selected = null,
     busy = false;
   $("#instant-option").hidden = kind !== "plan";
+  $("#screenshot-option").hidden = kind !== "plan";
   function show(chat) {
     selected = chat;
     sessionStorage.setItem(key, chat.id);
@@ -104,16 +105,25 @@ export async function mountConversations({
     button.disabled = true;
     $("#chat-status").textContent = "seep is thinking locally…";
     try {
+      let screenshot = null;
+      const file = kind === "plan" ? $("#chat-image").files[0] : null;
+      if (file) {
+        if (file.size > 8 * 1024 * 1024) throw new Error("Screenshot must be under 8 MB.");
+        const data = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result.split(",")[1]); reader.onerror = reject; reader.readAsDataURL(file); });
+        screenshot = { data, size: file.size, contentType: file.type };
+      }
       if (!selected) selected = await api("chats", { action: "create", kind });
       show(
         await api("chats", {
           action: "send",
           id: selected.id,
           text,
-          ai: $("#chat-ai").checked,
+          ai: screenshot ? true : $("#chat-ai").checked,
+          screenshot,
         }),
       );
       input.value = "";
+      $("#chat-image").value = "";
       $("#chat-status").textContent = "Saved";
       await refresh();
     } catch (error) {

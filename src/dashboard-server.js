@@ -196,7 +196,7 @@ export class Controller {
             "The request timed out. Check Activity before retrying an action.",
           ),
         );
-      }, 300000);
+      }, 660000);
       this.pending.set(id, { resolve: resolveRequest, reject, timer });
       this.child.stdin.write(
         "@@REQUEST " + JSON.stringify({ id, action, payload }) + "\n",
@@ -370,7 +370,7 @@ export function createDashboard({
         body = "";
       for await (const chunk of req) {
         bytes += chunk.length;
-        if (bytes > 75000) {
+        if (bytes > (path === "/api/chats" ? 12000000 : 75000)) {
           send(413, { error: "Request is too large." });
           req.destroy();
           return;
@@ -451,7 +451,7 @@ export function createDashboard({
               data.id,
               data.text,
               (a, p) => controller.request(a, p),
-              { ai: data.ai },
+              { ai: data.ai, screenshot: data.screenshot },
             ),
           );
         throw new Error("Unknown chat action.");

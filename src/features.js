@@ -209,10 +209,10 @@ export class Features {
       const description = p.context
         ? (
             "Earlier discussion: " +
-            String(p.context).slice(-600) +
+            String(p.context).slice(-10000) +
             "\nLatest request: " +
             p.description
-          ).slice(-1500)
+          ).slice(-12000)
         : p.description;
       const plan = await generatePlan(
           description,

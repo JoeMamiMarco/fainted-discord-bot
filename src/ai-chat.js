@@ -19,7 +19,7 @@ export function reasoningBudget(question) {
     );
   return {
     num_ctx: complex ? 8192 : 4096,
-    num_predict: complex ? 900 : 500,
+    num_predict: complex ? 1800 : 700,
     num_thread: 4,
     num_gpu: 0,
     temperature: 0.15,

@@ -42,6 +42,14 @@ async function rawLocalPlan({
       screenshot.size > MAX_IMAGE_BYTES
     )
       throw new Error("Use a PNG, JPEG, or WebP screenshot under 8 MB.");
+    if (screenshot.data) {
+      if (typeof screenshot.data !== "string" || screenshot.data.length > 4 * Math.ceil(MAX_IMAGE_BYTES / 3) || !/^[A-Za-z0-9+/]+={0,2}$/.test(screenshot.data)) throw new Error("Invalid screenshot data.");
+      const bytes = Buffer.from(screenshot.data, "base64");
+      if (bytes.length > MAX_IMAGE_BYTES || bytes.length < 12) throw new Error("Invalid screenshot size.");
+      const valid = bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])) || (bytes[0] === 255 && bytes[1] === 216) || (bytes.toString("ascii",0,4) === "RIFF" && bytes.toString("ascii",8,12) === "WEBP");
+      if (!valid) throw new Error("Use an actual PNG, JPEG or WebP image.");
+      user.images = [screenshot.data];
+    } else {
     const imageURL = new URL(screenshot.url);
     if (
       imageURL.protocol !== "https:" ||
@@ -77,13 +85,14 @@ async function rawLocalPlan({
       reader.releaseLock();
     }
     user.images = [Buffer.concat(chunks).toString("base64")];
+    }
   }
   let response;
   try {
     response = await fetchFn(`${url}/api/chat`, {
       method: "POST",
       redirect: "error",
-      signal: AbortSignal.timeout(240000),
+      signal: AbortSignal.timeout(600000),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model,
@@ -102,8 +111,8 @@ async function rawLocalPlan({
         think: false,
         keep_alive: 0,
         options: {
-          num_ctx: 4096,
-          num_predict: 1800,
+          num_ctx: 8192,
+          num_predict: 6000,
           num_thread: 4,
           num_gpu: 0,
           temperature: 0.1,

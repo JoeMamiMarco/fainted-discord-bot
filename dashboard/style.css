@@ -91,7 +91,7 @@ body > aside {
 .brand span {
   font-size: 11px;
   display: block;
-  color: #858585;
+  color: #bcbcbc;
   font-weight: 450;
   letter-spacing: 2.8px;
   line-height: 1;
@@ -116,7 +116,7 @@ body > aside {
 }
 .server-switch small {
   font-size: 10px;
-  color: #777;
+  color: #b3b3b3;
 }
 .server-switch > span:last-child {
   margin-left: auto;
@@ -200,7 +200,7 @@ header {
   background: #050505;
 }
 .breadcrumb {
-  color: #777;
+  color: #b3b3b3;
   font-size: 12px;
 }
 .breadcrumb span {
@@ -326,7 +326,7 @@ p {
 }
 .metric label {
   display: block;
-  color: #858585;
+  color: #bcbcbc;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.7px;
@@ -339,7 +339,7 @@ p {
   margin: 10px 0 3px;
 }
 .metric small {
-  color: #777;
+  color: #b3b3b3;
   font-size: 10px;
 }
 .section-head {
@@ -435,7 +435,7 @@ p {
 }
 .field small {
   display: block;
-  color: #777;
+  color: #b3b3b3;
   font-size: 10px;
   margin-top: 5px;
 }
@@ -529,7 +529,7 @@ input[type="datetime-local"] {
 }
 .actions .hint {
   font-size: 10px;
-  color: #777;
+  color: #b3b3b3;
 }
 .form-result {
   white-space: pre-wrap;
@@ -584,7 +584,7 @@ input[type="datetime-local"] {
 }
 .discord-name small {
   font-size: 9px;
-  color: #777;
+  color: #b3b3b3;
   margin-left: 8px;
   font-weight: 400;
 }
@@ -679,7 +679,7 @@ input[type="datetime-local"] {
   height: 140px;
   display: grid;
   place-items: center;
-  color: #777;
+  color: #b3b3b3;
   font-size: 12px;
 }
 .table-wrap {
@@ -799,7 +799,7 @@ dialog p {
   border: 1px solid #292929;
   border-radius: 12px;
   padding: 35px;
-  color: #777;
+  color: #b3b3b3;
 }
 .monogram {
   font-size: 60px;
@@ -841,7 +841,7 @@ code {
   font-size: 11px;
 }
 .muted {
-  color: #777;
+  color: #b3b3b3;
 }
 .two-fields {
   display: grid;
@@ -990,7 +990,7 @@ code {
 }
 .chat-sidebar small {
   margin-top: auto;
-  color: #777;
+  color: #b3b3b3;
   line-height: 1.5;
 }
 .chat-row {
@@ -1016,7 +1016,7 @@ code {
 .chat-row > [data-delete] {
   border: 0;
   background: transparent;
-  color: #888;
+  color: #bcbcbc;
   padding: 7px;
 }
 .chat-main {
@@ -1076,12 +1076,12 @@ code {
   margin: 8px 0;
 }
 .chat-message small {
-  color: #999;
+  color: #c3c3c3;
 }
 .chat-greeting {
   text-align: center;
   padding: 30px 15px;
-  color: #999;
+  color: #c3c3c3;
 }
 .chat-greeting img {
   height: 75px;
@@ -1116,7 +1116,7 @@ code {
   font-size: 36px;
 }
 .login-card p {
-  color: #999;
+  color: #c3c3c3;
   line-height: 1.7;
 }
 .login-card button {
@@ -1125,7 +1125,7 @@ code {
 .server-picker {
   width: 100%;
   font-size: 11px;
-  color: #999;
+  color: #c3c3c3;
 }
 .server-picker select {
   width: 100%;
@@ -1144,3 +1144,24 @@ code {
     grid-template-columns: 170px minmax(0, 1fr);
   }
 }
+
+/* seep's high-contrast monochrome dashboard */
+body { background:#080808; color:#f5f5f5; }
+body > aside { background:#141414; border-right:1px solid #292929; }
+button { border-radius:12px; font-weight:600; }
+input, textarea, select { border-radius:12px; color:#f5f5f5; }
+input::placeholder, textarea::placeholder { color:#a8a8a8; opacity:1; }
+.panel, .module-card, .metric, .hero, .conversation-layout { border-radius:20px; border-color:#303030; background-color:#171717; box-shadow:0 4px 20px #0002; }
+.panel { padding:24px; }
+.panel h2, .section-head h2 { color:#fff; letter-spacing:-.4px; }
+.panel p, .hint, .muted, .eyebrow { color:#bfbfbf; }
+.server-switch { border-radius:14px; background:#202020; }
+nav button, nav a { border-radius:10px; }
+.chat-sidebar { background:#121212; }
+.chat-message { border-radius:16px; }
+.chat-main textarea { background:#101010; border:1px solid #444; }
+#screenshot-option { display:grid; gap:8px; margin:12px 0; }
+#screenshot-option[hidden] { display:none; }
+#chat-image { max-width:100%; font-size:12px; }
+#chat-image::file-selector-button { background:#292929; color:white; border:1px solid #555; border-radius:10px; padding:8px 12px; margin-right:10px; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline:2px solid white; outline-offset:3px; }

@@ -58,7 +58,7 @@ test("local requests have no API credentials and release memory immediately", as
   assert.equal(body.keep_alive, 0);
   assert.equal(body.options.num_thread, 4);
   assert.equal(body.options.num_gpu, 0);
-  assert.equal(body.options.num_ctx, 4096);
+  assert.equal(body.options.num_ctx, 8192);
 });
 test("local AI failures never fall back to cloud", async () => {
   let calls = 0;
@@ -94,8 +94,8 @@ test("local screenshot fetching blocks arbitrary destinations", async () => {
 });
 test("explicit channel budgets are enforced in converted layouts", () => {
   assert.equal(layoutBudget("at most eight channels"), 8);
-  assert.equal(layoutBudget("up to 40 channels"), 30);
-  assert.equal(layoutBudget("gaming community"), 12);
+  assert.equal(layoutBudget("up to 40 channels"), 40);
+  assert.equal(layoutBudget("gaming community"), 100);
   assert.throws(() => parseLocalLayout(JSON.stringify(layout), 1));
 });
 test("server logs are always placed in a private staff category", () => {
@@ -137,7 +137,7 @@ test("local layouts are cleaned before the dashboard can build them", () => {
   const staff = plan.categories.find((c) => c.name === "STAFF");
   assert.equal(staff.private, true);
   assert.ok(staff.channels.some((x) => x.name === "server-logs"));
-  const community = plan.categories.find((c) => c.name === "COMMUNITY SPACE");
+  const community = plan.categories.find((c) => c.name.toUpperCase() === "COMMUNITY SPACE");
   assert.deepEqual(community.channels, [{ name: "general-chat", type: "text" }]);
 });
 test("local AI is selected by default without any API key", async (t) => {
@@ -153,4 +153,18 @@ test("local AI is selected by default without any API key", async (t) => {
   assert.ok(
     mocked.mock.calls[0].arguments[0].startsWith("http://127.0.0.1:11435/"),
   );
+});
+test("dashboard image bytes reach the local vision model", async () => {
+  const data = Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]).toString("base64");
+  let sent;
+  await localPlan({...base, screenshot:{data,size:12,contentType:"image/png"}, fetchFn:async (url,init)=>{sent=JSON.parse(init.body);return response();}});
+  assert.deepEqual(sent.messages[1].images,[data]);
+  await assert.rejects(localPlan({...base,screenshot:{data:Buffer.from("not an image at all").toString("base64"),size:19,contentType:"image/png"}}),/actual PNG/);
+});
+test("larger layouts preserve requested channel types and emoji", () => {
+  const channels = Array.from({length:35},(_,i)=>({name:`channel-${i}`,type:"text",category:"COMMUNITY",private:false}));
+  channels.push({name:"🎨-art",type:"forum",category:"COMMUNITY",private:false});
+  const plan=parseLocalLayout(JSON.stringify({roles:[],channels}),100);
+  assert.equal(plan.categories.flatMap(c=>c.channels).filter(c=>c.name.startsWith("channel-")).length,35);
+  assert.ok(plan.categories.flatMap(c=>c.channels).some(c=>c.type==="forum"&&c.name==="🎨-art"));
 });
