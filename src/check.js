@@ -1,6 +1,6 @@
 export function checkEnv(env = process.env) {
   if (Number(process.versions.node.split(".")[0]) < 24)
-    throw new Error("Install Node.js 24 or newer to run Fainted.");
+    throw new Error("Install Node.js 24 or newer to run seep.");
   const missing = [
     "DISCORD_TOKEN",
     "DISCORD_CLIENT_ID",

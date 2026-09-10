@@ -8,6 +8,7 @@ import {
   PermissionFlagsBits as P,
   MessageFlags,
 } from "discord.js";
+import { card } from "./presentation.js";
 import { randomUUID } from "node:crypto";
 import {
   duration,
@@ -21,15 +22,9 @@ import {
 import { generatePlan, formatPlan, applyPlan } from "./planner.js";
 
 const row = (...buttons) => new ActionRowBuilder().addComponents(buttons);
-const button = (id, label, style = ButtonStyle.Primary) =>
+const button = (id, label, style = ButtonStyle.Secondary) =>
   new ButtonBuilder().setCustomId(id).setLabel(label).setStyle(style);
-const embed = (title, description) =>
-  new EmbedBuilder()
-    .setColor(0x9c6cff)
-    .setTitle(title)
-    .setDescription(description.slice(0, 4000))
-    .setFooter({ text: "FAINTED • Community & moderation" })
-    .setTimestamp();
+const embed = card;
 export class Bot {
   constructor(client, store) {
     this.client = client;
@@ -89,7 +84,7 @@ export class Bot {
   async handle(i) {
     if (!i.isChatInputCommand() && !i.isButton()) return;
     try {
-      if (!i.inGuild() || i.guildId !== process.env.DISCORD_GUILD_ID)
+      if (!i.inGuild())
         return i.reply({
           content: "Use this bot in its configured server.",
           flags: MessageFlags.Ephemeral,
@@ -220,7 +215,7 @@ export class Bot {
         const key = `lock:${i.channelId}`;
         if (name === "lock") {
           if (this.store.get(id, key))
-            throw new Error("This channel is already locked by Fainted.");
+            throw new Error("This channel is already locked by seep.");
           const overwrite = i.channel.permissionOverwrites.cache.get(id);
           const previous = overwrite?.allow.has(P.SendMessages)
             ? true
@@ -241,7 +236,7 @@ export class Bot {
         } else {
           const saved = this.store.get(id, key);
           if (!saved)
-            throw new Error("No saved Fainted lock exists for this channel.");
+            throw new Error("No saved seep lock exists for this channel.");
           await i.channel.permissionOverwrites.edit(
             id,
             { SendMessages: saved.previous },
@@ -544,7 +539,7 @@ export class Bot {
       return this.reply(i, "", {
         embeds: [
           embed(
-            "Fainted · Command guide",
+            "seep · Command guide",
             "**Moderation**\n/warn /history /timeout /untimeout /kick /ban /unban /purge /slowmode /lock /unlock /inactive\n\n**Setup**\n/settings channels · roles · messages · automod · leveling · clear\n/server plan · snapshot\n\n**Community**\n/role-panel /onboarding /ticket panel /ticket close\n/poll create · close /rank /leaderboard\n/invites /invite-leaderboard /analytics\n\nCommands check your Discord permissions. Server builds and inactive kicks require reviewing a preview.",
           ),
         ],
@@ -840,6 +835,7 @@ export class Bot {
       });
       this.store.set(id, `ticket:${ch.id}`, {
         owner: actor.id,
+        channel: ch.id,
         support: support.id,
         closed: false,
       });
@@ -852,7 +848,19 @@ export class Bot {
           ),
         ],
         components: [
-          row(button("ticket:close", "Close ticket", ButtonStyle.Secondary)),
+          row(
+            button("ticket:close", "Close ticket", ButtonStyle.Secondary),
+            button(
+              "feature:claim:ticket",
+              "Claim ticket",
+              ButtonStyle.Secondary,
+            ),
+            button(
+              "feature:transcript:ticket",
+              "Transcript",
+              ButtonStyle.Secondary,
+            ),
+          ),
         ],
         allowedMentions: { parse: [] },
       });
@@ -890,12 +898,7 @@ export class Bot {
     });
   }
   async message(message, edited = false) {
-    if (
-      !message.guild ||
-      message.guildId !== process.env.DISCORD_GUILD_ID ||
-      message.author?.bot
-    )
-      return;
+    if (!message.guild || message.author?.bot) return;
     const id = message.guildId,
       config = this.store.config(id),
       key = `${id}:${message.author.id}`,
@@ -940,13 +943,23 @@ export class Bot {
       }
       return;
     }
-    if (!edited) this.store.message(id, member.id, config.leveling);
+    if (!edited) {
+      const old = this.store.member(id, member.id).xp;
+      const updated = this.store.message(id, member.id, config.leveling);
+      if (updated.xp > old && config.xpMultiplier !== 1)
+        this.store.addXP(
+          id,
+          member.id,
+          (updated.xp - old) * (config.xpMultiplier - 1),
+        );
+    }
+    return true;
   }
   async reaction(reaction, user, added) {
     if (user.bot) return;
     if (reaction.partial) await reaction.fetch();
     const g = reaction.message.guild;
-    if (!g || g.id !== process.env.DISCORD_GUILD_ID) return;
+    if (!g) return;
     const panel = this.store.get(g.id, `panel:${reaction.message.id}`);
     if (!panel?.role || !panel.emoji || reaction.emoji.name !== panel.emoji)
       return;
@@ -978,7 +991,6 @@ export class Bot {
   async joined(member) {
     const g = member.guild,
       id = g.id;
-    if (id !== process.env.DISCORD_GUILD_ID) return;
     const config = this.store.config(id);
     // Ambiguous simultaneous joins, expired one-use links, vanity URLs, and offline joins are unknown.
     await this.serial(`invites:${id}`, async () => {
@@ -1012,7 +1024,12 @@ export class Bot {
       try {
         const ch = await g.channels.fetch(config.welcomeChannel);
         await ch.send({
-          content: template(config.welcome, member),
+          embeds: [
+            embed(
+              template(config.welcomeTitle, member),
+              template(config.welcome, member),
+            ).setImage(config.welcomeImage || null),
+          ],
           allowedMentions: { users: [member.id], parse: [] },
         });
       } catch (e) {
@@ -1021,13 +1038,17 @@ export class Bot {
     await this.log(g, "Member joined", `<@${member.id}> (${member.id})`);
   }
   async left(member) {
-    if (member.guild.id !== process.env.DISCORD_GUILD_ID) return;
     const config = this.store.config(member.guild.id);
     if (config.goodbyeChannel)
       try {
         const ch = await member.guild.channels.fetch(config.goodbyeChannel);
         await ch.send({
-          content: template(config.goodbye, member),
+          embeds: [
+            embed(
+              template(config.goodbyeTitle, member),
+              template(config.goodbye, member),
+            ).setImage(config.goodbyeImage || null),
+          ],
           allowedMentions: { parse: [] },
         });
       } catch (e) {

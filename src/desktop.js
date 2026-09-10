@@ -21,11 +21,19 @@ let stopping = false;
 let instanceLock;
 let startupTimer;
 let ready = false;
+let botChild;
 mkdirSync("runtime", { recursive: true });
 const log = createWriteStream("runtime/ai-server.log", { flags: "a" });
 const io = createInterface({ input: process.stdin });
 io.on("line", (line) => {
   if (line.trim() === "stop") void stop();
+  else if (
+    line.startsWith("@@REQUEST ") &&
+    line.length < 80000 &&
+    botChild &&
+    !stopping
+  )
+    botChild.stdin.write(line + "\n");
 });
 io.on("close", () => {
   if (process.argv.includes("--panel-mode")) void stop();
@@ -51,9 +59,9 @@ function child(executable, args, env = process.env, quiet = false) {
     const lines = createInterface({ input: p.stdout });
     lines.on("line", (line) => {
       console.log(line);
-      if (line.startsWith("@@FAINTED ")) {
+      if (line.startsWith("@@SEEP ")) {
         try {
-          if (JSON.parse(line.slice(10)).type === "online") {
+          if (JSON.parse(line.slice(7)).type === "online") {
             ready = true;
             clearTimeout(startupTimer);
           }
@@ -109,7 +117,7 @@ async function startLocal() {
     .catch(() => false);
   if (occupied)
     throw new Error(
-      "The local AI port is already in use. Stop the other Fainted panel before starting this one.",
+      "The local AI port is already in use. Stop the other seep panel before starting this one.",
     );
   const profile = join(root, "runtime", "ollama-profile");
   mkdirSync(profile, { recursive: true });
@@ -208,7 +216,7 @@ try {
     instanceLock.once("error", () =>
       rejectLock(
         new Error(
-          "Fainted is already running. Close its other dashboard or launcher first.",
+          "seep is already running. Close its other dashboard or launcher first.",
         ),
       ),
     );
@@ -235,11 +243,7 @@ try {
           "Bot dependencies are missing. Install Node.js 24+, then run npm install in this folder.",
         );
     }
-    if (
-      (process.env.AI_PROVIDER || "ollama") === "ollama" ||
-      mode === "setup" ||
-      mode === "test-ai"
-    ) {
+    if (true || mode === "setup" || mode === "test-ai") {
       try {
         await startLocal();
         if (mode === "setup") {
@@ -282,8 +286,9 @@ try {
     const p = child(
       process.execPath,
       ["--env-file-if-exists=.env", "src/index.js"],
-      { ...process.env, FAINTED_PANEL: "1" },
+      { ...process.env, SEEP_PANEL: "1" },
     );
+    botChild = p;
     startupTimer = setTimeout(() => {
       report("error", {
         message:

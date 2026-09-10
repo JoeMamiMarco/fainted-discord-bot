@@ -1,155 +1,91 @@
-# Fainted
+# seep
 
-A Discord moderation and community bot, built from the visible features in your PeakBot / Onyx video. This is original code, with Discord slash commands, embeds, buttons, and reactions. It does not use PeakBot's private source, branding, or website. The repository's existing GitHub remote is retained.
+A black-and-white Discord moderation bot with two Windows desktop dashboards and free local AI.
 
-## Start here
+## Open the dashboards
 
-1. Double-click **Fainted Panel.exe**, open **Bot settings**, and fill your bot token, application ID, and server ID. The token field is hidden and saved only in `.env`.
-2. In the [Discord Developer Portal](https://discord.com/developers/applications), create/select your application. Under **Bot**, obtain its token and enable **Server Members Intent** and **Message Content Intent**.
-3. Invite the bot to your server using the application's installation/OAuth2 flow with the **bot** and **applications.commands** scopes. Grant the permissions listed below. Move the bot role above the normal members and roles it should manage.
-4. Click **Start bot**. The dashboard checks your connection and syncs commands automatically. On this PC the runtime and local model are already installed. On a fresh clone, install Node.js 24+ and dependencies; use **Install / repair AI** for optional AI setup.
-5. In Discord, run `/help`, then `/settings channels`, `/settings roles`, and `/settings automod`.
+- **Owner:** `seep dashboard.exe` has Start, Stop and Restart. Closing the owner window stops the bot, local AI and member service. `START-SEEP.cmd` also starts the bot automatically.
+- **Members:** `seep member dashboard.exe` has Discord login and server selection, with no bot controls. Closing it does not stop the host.
+- Both EXEs need the supplied WebView2 DLLs beside them. Windows x64 and Microsoft Edge WebView2 are required. The owner computer must stay on and connected.
 
-This PC uses the bundled Node.js 24 runtime in `runtime/node/`, so an older system installation cannot break startup. The dashboard falls back to the Codex runtime or Node.js on PATH on other PCs. A portable install on another PC requires **Node.js 24 or newer** and `npm install` in this folder. Keep the panel open while the bot runs. **Stop** or closing the panel stops its bot, AI server, and model worker processes. For 24/7 use, run one instance on an always-on machine with persistent storage.
+## First setup
 
-### Fill in `.env`
+On a fresh clone, install Node.js **24+**, run `npm install`, and copy `.env.example` to `.env`. Fill the bot token, application ID and owner server ID, or use **Bot Settings**. Never share `.env`.
 
-| Setting             | Required    | Where to get it                                                                                                     |
-| ------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
-| `DISCORD_TOKEN`     | Yes         | Developer Portal → your application → Bot → token                                                                   |
-| `DISCORD_CLIENT_ID` | Yes         | General Information → Application ID                                                                                |
-| `DISCORD_GUILD_ID`  | Yes         | Discord → enable Developer Mode in Advanced settings → right-click your server → Copy Server ID                     |
-| `OPENAI_API_KEY`    | OpenAI only | Your own OpenAI API key; separate API billing applies                                                               |
-| `OPENAI_MODEL`      | OpenAI only | A model available to your API account that supports Responses structured outputs, plus image inputs for screenshots |
-| `DATABASE_PATH`     | No          | Default: `./data/fainted.sqlite`                                                                                    |
+In Discord Developer Portal, enable **Server Members Intent** and **Message Content Intent**. Invite seep with `bot` and `applications.commands` scopes. Give it the permissions needed by the features you enable, and move its role above roles/members it should manage. Discord owner and role hierarchy rules always apply.
 
-The bot runs in one configured server. Channel and role IDs are selected through Discord commands; you do not need to put them in `.env`. `/settings clear` removes a previously configured channel or role. AutoMod is off until you enable it.
+Click **Install / repair AI** while the bot is stopped. The CPU-only local runtime and `qwen3-vl:2b-instruct` model download once (model approximately 1.9 GB). No AI API key, paid service or paid fallback is used. Press Start bot after setup.
 
-### Lightweight local AI and Windows panel
+## Discord login for members
 
-**Fainted Panel.exe** is a small native Windows Forms dashboard, built from `desktop/FaintedPanel.cs` and `desktop/Dashboard.cs`. It uses the .NET Framework included with Windows, without an Electron installation. Keep the executable inside this repository folder; it needs the accompanying source and dependencies. Rebuild it with `desktop/build-panel.cmd`.
+In the owner dashboard's Bot Settings, enter the application's **OAuth2 Client Secret** (different from its bot token). It is stored locally, never displayed back, and must not be shared with members. Register the exact redirect under Developer Portal → OAuth2:
 
-- **Start bot / Stop bot / Restart:** one-click controls with real connection status, current startup step, uptime, Discord latency, and bot memory. Commands sync automatically. Closing the dashboard disconnects gracefully and ends its owned bot/AI processes. Duplicate instances are blocked, including legacy launchers.
-- **Bot settings:** edit your three Discord credentials locally. No AI API key is needed.
-- **Sync commands:** register or update this application's commands in the configured server.
-- **Install / repair AI:** install the pinned portable runtime and download the small model. Already completed on this PC. On another PC the official runtime archive is about 1.5 GB temporarily; only approximately 72 MB of CPU files are kept after extraction.
-- **Test local AI:** generate and validate a harmless sample plan, report the time, and shut down the AI service without connecting to Discord.
+`http://127.0.0.1:11438/auth/callback`
 
-Default model: [Qwen3-VL 2B Instruct](https://ollama.com/library/qwen3-vl:2b-instruct), approximately 1.9 GB on disk. It can accept descriptions and screenshots. Fainted limits generation to four CPU threads, a 4,096-token context, one concurrent model request, and no GPU offload. It unloads the model after each request. This trades response speed for lower idle memory use. Resource use depends on the request; the 1.9 GB download size is not a RAM cap.
+Keep `http://127.0.0.1:11438` as the member origin for use on this computer. Open the member EXE and choose Continue with Discord. The login finishes in the browser and pairs securely with the desktop app.
 
-The local service binds only to `127.0.0.1:11435`, with Ollama cloud features disabled. Runtime files, models, logs, and the Ollama child process's private profile are inside `runtime/`. No account-wide Ollama install, login, API key, or Windows startup task is required. The bot never switches to a paid provider on failure. It still needs internet to connect to Discord; screenshot inputs are downloaded from Discord before local analysis.
+Only servers the signed-in user owns or has Manage Server/Administrator permissions in are listed. Seep must be invited to a server before managing it. Server building also requires Manage Channels and Manage Roles. Changing automation settings or accessing backups requires Administrator. Permissions are rechecked on each request; member accounts cannot access owner start/stop controls or bot credentials.
 
-```env
-AI_PROVIDER=ollama
-OLLAMA_BASE_URL=http://127.0.0.1:11435
-OLLAMA_MODEL=qwen3-vl:2b-instruct
-```
+For users on other computers, host the member service behind an HTTPS reverse proxy. Set `MEMBER_DASHBOARD_ORIGIN` to that public HTTPS origin, register its `/auth/callback` URL, and put the same origin in `member-server-url.txt` beside the member EXE. Proxy **11438 only**, never owner port **11437**. No public host or domain is configured automatically. The default localhost URL works only on the owner's PC.
 
-In Discord use `/server plan description:A gaming community with rules, general chat and a staff room ai:true`. Review the draft before pressing Build. Known staff/log channel names are placed in a private staff category. Your existing Discord role/permission checks still gate every actual server change.
+Distribute only the member EXE, the three WebView2 DLLs, the server address file, and the third-party licenses. Do not distribute `.env`, `data/`, `runtime/` or your owner dashboard installation.
 
-### If startup needs attention
+## Conversations and local AI
 
-The dashboard keeps the actual error visible and re-enables **Retry start**. A redacted activity log is saved in `runtime/dashboard.log`. Credentials are never included in Git.
+Mention `@seep your question` in Discord, or reply to a seep message without mentioning it. Every successful answer ends with:
 
-- **Online / limited:** Discord has not enabled a required privileged intent. Open **Developer Portal** from the dashboard, select **Bot**, enable **Server Members Intent** and **Message Content Intent**, save, then press **Restart**. Basic slash commands work while these settings are missing; member join/leave features and content-based AutoMod require the relevant intent. Enabling AutoMod or reviewing inactive members gives a clear error when its intent is unavailable.
-- **Invalid token or server access:** fix the three fields in **Bot settings**, and check that the application is invited to that server.
-- **AI unavailable:** moderation stays online. Stop the bot and use **Install / repair AI**, then start again. AI never falls back to a paid service.
-- **Another instance is running:** close the other dashboard or console launcher. This version uses a local instance lock on port 11436, released automatically on exit.
-- **Connection blocked:** allow Node.js through your network/firewall and retry.
+`-# reply to this message to continue`
 
-### Optional cloud alternative (Gemini)
+Reply context includes the preceding seep message and its original question. Detailed answers split into messages below Discord's 2,000-character limit. Bots and webhooks are ignored.
 
-Google lists `gemini-2.5-flash-lite` text/image input and text output as free of charge on its limited [Free tier](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-lite). Availability and quotas depend on your account and region. This is not an unlimited shared API key.
+The AI Assistant and AI Server Builder save chats in a sidebar, privately by Discord account and server. Resume or delete chats; limits are 100 saved chats per account/server and 100 exchanges per chat. Recent conversation history guides follow-up answers and layout refinements.
 
-1. Sign into [Google AI Studio](https://aistudio.google.com/apikey) and create your own API key.
-2. Keep that project on the **Free tier**. Do not enable billing for this free setup; a billing-enabled project may charge for requests. The bot cannot inspect or enforce Google's project billing tier.
-3. Paste the key locally into `.env` after `GEMINI_API_KEY=`. Change `AI_PROVIDER` from `ollama` to `gemini`; set `GEMINI_MODEL=gemini-2.5-flash-lite`.
-4. Restart the bot. Run `SETUP-AND-START.cmd` once to refresh the command descriptions, then use `/server plan description:A gaming community ai:true`.
+Complex questions receive an 8K context window and larger response budget; simple questions use 4K. The model uses four CPU threads, no GPU, one inference at a time, and unloads after each request. Instructions encourage checking constraints, handling ambiguity and acknowledging uncertainty. This improves the existing small model; it is not a newly trained model or a replacement for a much larger hosted model. There is no web access.
 
-Leave `OPENAI_API_KEY` and `OPENAI_MODEL` blank. When Gemini reaches its quota, the bot reports the limit; it does not switch to OpenAI or a paid model. You can keep using all moderation features and template plans with `ai:false`. Google may use free-tier submitted content to improve its products; keep confidential information out of AI plan descriptions/screenshots. No live Gemini call has been tested without your key.
+AI server creation requires a preview and explicit Build action. Drafts expire in 15 minutes and are bound to their creator and server. Builds add missing categories, text/voice channels and ordinary roles. Existing channels are retained. Staff/log categories are private. Limits: 6 categories, 8 roles, 30 channels. A non-AI template is also available. `/server plan` supports Discord-uploaded screenshots. Renaming/deleting existing channels and arbitrary code execution are not supported.
 
-### Bot permissions
+## Feature coverage
 
-Enable **View Channels, Send Messages, Embed Links, Attach Files, Read Message History, Add Reactions, Manage Messages, Moderate Members, Kick Members, Ban Members, Manage Channels, Manage Roles, and Manage Server**. Manage Server is used for invite tracking. Administrator is not required. Channel overrides must also allow the bot to work in each configured channel.
+| Area | Included |
+| --- | --- |
+| Moderation | Warn/history, timeout, kick, ban/unban, purge, slowmode, lock/unlock; action and role hierarchy checks |
+| Auto moderation | Spam/mention limits, invite blocking, custom words, staff exemptions, opt-in local AI classification in selected channels |
+| Security | Account-age checks and optional kick; join-rate raid lockdown/restoration; opt-in anti-nuke dangerous-role removal |
+| Welcome/goodbye | Branded embeds, custom text/title/image, optional DM and ordinary autorole |
+| Roles | Button/reaction roles and agreement/verification onboarding |
+| Tickets | Private channels, support role, claims, priorities, closing, latest-100-message transcript |
+| XP | Message cooldown, multiplier, voice XP, level rewards, decay, ranks/leaderboards |
+| Giveaways | Timed entries, role/account-age requirements, multiple winners, ending/rerolls |
+| Polls | Timed single/multiple votes, anonymous/named voters, results |
+| Events | Discord events, RSVP buttons and channel reminders |
+| Voice | Join-to-create rooms, user limit, empty-room cleanup |
+| Analytics | Observed message/member activity, daily trends, top channels, moderation counts, local AI summary |
+| Invites | Attribution, leaderboards, milestone rewards; ambiguous/vanity/offline joins marked unknown |
+| Embeds | Black-and-white preview, custom body/footer/images, bot or bot-owned webhook delivery |
+| Backups | Local layout/config snapshots, daily backups, additive layout restore within builder limits |
+| Inactivity | Preview and opt-in daily cleanup of observed inactive, unprivileged members |
+| Auto responses | Phrase matching without loading AI |
 
-Moderator command visibility uses the corresponding native Discord permission; the handler checks it again. Normal members can use their rank, leaderboards, ticket buttons, role buttons/reactions, onboarding, and poll voting. Staff channels created by the planner are available to administrators, the bot, and the configured support role.
+Destructive automation is opt-in. Configure channels, roles and thresholds first. AI moderation samples selected text messages to stay light; it is not exhaustive image moderation. Analytics starts when seep observes activity. Backups do not recover messages or automatically reapply saved configuration.
 
-## Features from the video
+PeakBot references informed the navigation and layout. This is an independent implementation, not PeakBot source or guaranteed complete feature parity. Sticky-role restoration, booster-role customization, historical analytics backfill and an external support service are not included.
 
-| Visible feature                           | Fainted implementation                                                                                                                   |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Describe a server and review a build plan | `/server plan description:...`; preview, JSON attachment, requester-only Build button                                                    |
-| AI server design                          | Use `ai:true`; the installed local model creates the draft without an API key                                                            |
-| Clone a layout from a screenshot          | Attach a PNG/JPEG/WebP to `/server plan` with `ai:true`; generates a proposed layout, not an exact server backup                         |
-| Channels and roles                        | Builder adds missing categories, text/voice channels, and normal roles; private staff category support                                   |
-| Welcome/goodbye messages                  | `/settings channels` and `/settings messages`, with `{user}`, `{name}`, `{server}`, `{count}` placeholders                               |
-| Auto roles                                | `/settings roles auto:@Member`; only ordinary roles below the bot                                                                        |
-| Reaction roles                            | `/role-panel`; persistent Unicode reaction and button role controls                                                                      |
-| Onboarding                                | `/onboarding rules:... role:@Member`; rules acknowledgment and optional role grant                                                       |
-| Ticket system                             | `/settings roles support:@Support`, then `/ticket panel`; private channels, one open ticket per person, owner/staff close                |
-| Inactive kick system                      | `/inactive days:30`; explicit preview and confirmation, up to 10 members per run                                                         |
-| Poll system                               | `/poll create question:... options:Yes\|No`; persistent one-vote-per-member buttons; `/poll close`                                       |
-| Moderation                                | Warnings, history, timeout/removal, kick, ban/unban, purge, slowmode, channel lock/unlock                                                |
-| XP and leveling                           | 15 XP at most once per minute; `/rank`, `/leaderboard`, `/settings leveling`                                                             |
-| Invite tracking and leaderboard           | `/invites`, `/invite-leaderboard`; observed, uniquely attributable referrals                                                             |
-| Auto moderation                           | `/settings automod`; spam, mass mentions, Discord invite links, configurable blocked words; deletes violating messages                   |
-| Server logging                            | Private configured log channel: bot moderation, joins/leaves, bans, channel creation/deletion, deleted-message metadata, tickets, builds |
-| Activity analytics                        | `/analytics days:30`; actual message totals, active-member count, daily CSV for 1–90 days                                                |
+## Rich Presence
 
-The demo also says “much more” without identifying those features. There is no claim to implement undisclosed features. This version uses Discord itself as the control interface; it does not include the separate animated web dashboard from the video. Analytics exports real data rather than reproducing the demo's chart or sample numbers.
+The owner desktop app connects to the signed-in **Discord desktop user's** local RPC connection and displays seep artwork, elapsed time and dashboard activity. It does not require or use a Discord user token. Bot gateway status is separate; custom Rich Presence cards are for the desktop user's activity.
 
-## First setup examples
+Toggle it in Bot Settings → Discord Rich Presence. Closing the owner dashboard clears it. Enable activity sharing in Discord if you want others to see it. Discord controls the surrounding card's theme; the supplied art itself is black and white. There are no fabricated party/join secrets or fake join actions.
 
-```text
-/settings channels welcome:#welcome goodbye:#goodbye logs:#mod-logs
-/settings roles auto:@Member support:@Support
-/settings messages welcome:Welcome {user} to {server}! Read #rules and introduce yourself.
-/settings automod enabled:true block_invites:true mentions:6 spam:6
-/ticket panel
-/onboarding rules:Be respectful. No spam. Follow Discord's rules. role:@Member
-/role-panel role:@Updates label:Get update notifications emoji:✅
-/server plan description:A gaming community with hangout and showcase channels
-```
+Defaults use the artwork's public GitHub image URLs. To use uploaded Rich Presence art instead, upload the assets in Developer Portal and set `RICH_PRESENCE_LARGE_IMAGE=seep_background` and `RICH_PRESENCE_SMALL_IMAGE=seep_logo`. The default URL image approach needs the asset files to be pushed to GitHub first.
 
-To require rules acceptance before a Member role, use the onboarding role and leave `autoRole` unset. The bot's onboarding panel is distinct from Discord's native Community Onboarding configuration.
+## Artwork and developer files
 
-## Behavior and limits
+`assets/seep-logo-1024.png` is a 1024×1024 PNG on opaque black, under 10 MB. Its prompt is recorded in `assets/logo-prompt.txt`. Additional background, cover and video assets are stored beside it with their dimensions in the filenames.
 
-- **Builds are additive.** Existing messages/channels are not deleted or renamed. Existing matching categories must have compatible visibility. Created roles have no special permissions. Review the plan before applying it. If a build partly fails, the response reports how many items were created; a new preview can reuse them. Server snapshots export names and structure, not permissions/messages; there is no restore/import command.
-- **Template mode is a template.** Without `ai:true`, descriptions select a coding, gaming, or general community layout. Local AI mode requires the model to be installed and the panel running; cloud alternatives require their own API keys. A smaller local model may need a more specific prompt. Local plans default to at most 12 channels; descriptions such as “at most eight channels” set a smaller limit, up to a maximum of 30. A screenshot does not reveal hidden channels or exact permission settings.
-- **Invite attribution is best-effort.** Uses observed invite-count changes. Concurrent joins, vanished single-use invites, vanity links, and offline periods may be unknown. Referrals count unique observed members once; leaving and rejoining does not inflate counts. This is not a fraud-proof rewards system.
-- **Inactivity means no observed messages**, not proven absence. Requires the requested number of days since first startup; excludes bots and anyone with an assigned role. Offline time and inaccessible channels can make the evidence incomplete. No unattended mass-kick schedule runs.
-- **Analytics starts when the bot runs.** It cannot recover historical messages or missed activity. XP ignores deleted AutoMod violations and is independent of message totals. Only the last 91 days of daily activity are retained.
-- **AutoMod is bot-side.** It checks new and edited messages while online, exempts members with Manage Messages or Administrator, and deletes violations without automatic bans/timeouts. Blocked words use case-insensitive substring matching. Discord native AutoMod rules are not installed.
-- **Locks change @everyone's Send Messages overwrite only.** Role-specific allows, administrator access, and thread permissions can still permit messages. Unlock restores the recorded previous value.
-- **Tickets close by hiding the channel from the opener**, keeping history for staff. Staff can later delete channels in Discord. No transcripts are sent outside the server. Administrators can see private channels as usual.
-- **Role panels recheck privileges at use time.** Changing an opt-in role into a staff role makes the panel refuse assignments. Reactions and buttons both control the same role; mixing them may require removing/readding a reaction to match a button toggle.
-- **Use one running instance per database.** In-process locks prevent duplicate confirmation clicks and ticket/poll races. This is not a distributed bot deployment.
+`desktop/build-panel.cmd` rebuilds both EXEs using the Windows .NET C# compiler. WebView2 licenses are in `desktop/licenses/`.
 
-## Data and secrets
+`npm test` runs moderation, startup, AI, OAuth and HTTP integration tests. Stop the live bot before the full suite: a startup test checks the instance lock. Tests cover permission revocation, user/server chat isolation, CSRF, OAuth state binding, owner-control exclusion, reply continuation and preview ownership. Real Discord OAuth login additionally needs the configured client secret and registered redirect.
 
-`data/fainted.sqlite` stores settings, moderation reasons, member IDs/XP/last activity, daily counts, invite attribution, poll votes, role panels, ticket mappings, onboarding acknowledgments, and build previews. It does not archive message bodies or tokens. Keep this database private and back it up together with its SQLite sidecar files while stopped. Moderation and configuration records remain until you remove the database; normal member data and cases are not automatically erased on leave.
+Data stays in `data/` (SQLite); logs, downloaded AI and private desktop profiles stay in `runtime/`. Both are ignored by Git. OAuth sessions and tokens stay only in host memory and expire; a host restart requires another login. Saved chats persist across restarts.
 
-`.env`, `data/`, `runtime/`, and `node_modules/` are ignored by Git. No live token is included. AI planning defaults to a local Qwen model via Ollama. Optional Gemini mode uses its [structured JSON output](https://ai.google.dev/gemini-api/docs/structured-output). Google states that free-tier inputs and outputs may be used to improve its products. Only submitted plan descriptions and images are sent, not Discord chat history. OpenAI remains an optional alternative with `AI_PROVIDER=openai` and Responses storage disabled. The API is called only by an explicit `ai:true` plan request. Do not attach confidential screenshots unless you intend to send them to that API.
-
-## GitHub Desktop
-
-In GitHub Desktop use **File → Add local repository**, choose this `fainted-discord-bot` folder, and review the new files. Its `origin` points to `https://github.com/JoeMamiMarco/fainted-discord-bot.git`. Commit and push when you want to upload the source. The bot itself does not push automatically. The source and small Windows panel executable can be committed; credentials, downloaded runtimes, model weights, and server data stay local. GitHub Desktop was not available during creation, so the files were prepared directly in the existing clone.
-
-## Development and validation
-
-```sh
-npm install
-npm test
-npm run check
-npm run register
-npm start
-```
-
-`pnpm-lock.yaml` pins the installed dependency tree; `pnpm install --frozen-lockfile` reproduces it. Tests cover role/permission boundaries, duration limits, AutoMod, durable data, XP, plan validation, duplicate-click locks, requester-bound confirmations, ticket access, and poll voting. Live Discord integration and AI calls require your credentials and have not been exercised by the offline tests.
-
-### Live smoke test after filling `.env`
-
-Use a small test server: run `/help`; set private logs; warn and timeout a lower-role test account; post a role panel and add/remove its role; open/close a ticket from that account; create/vote/close a poll; build a reviewed template; restart and verify warnings, XP, panels, and polls persist. Test AutoMod with harmless configured words and verify ordinary messages remain. Review the bot console if a channel permission or privileged intent is missing.
-
-Implementation references: [discord.js 14.27.0](https://discord.js.org/docs/packages/discord.js/14.27.0), [Discord gateway intents](https://docs.discord.com/developers/events/gateway), and [Discord permission hierarchy](https://docs.discord.com/developers/topics/permissions).
+Sources: [Discord OAuth2](https://docs.discord.com/developers/topics/oauth2), [Permissions](https://docs.discord.com/developers/topics/permissions), [Rich Presence](https://docs.discord.com/developers/discord-social-sdk/development-guides/setting-rich-presence), [WebView2](https://learn.microsoft.com/en-us/microsoft-edge/webview2/).

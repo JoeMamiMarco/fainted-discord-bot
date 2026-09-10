@@ -1,5 +1,5 @@
 {
-  "name": "fainted-discord-bot",
+  "name": "seep",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "start": "node --env-file-if-exists=.env src/desktop.js start",
+    "start": "node --env-file-if-exists=.env src/dashboard-server.js",
     "setup:ai": "node --env-file-if-exists=.env src/desktop.js setup",
     "test:ai": "node --env-file-if-exists=.env src/desktop.js test-ai",
     "register": "node --env-file-if-exists=.env src/register.js",

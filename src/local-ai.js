@@ -1,4 +1,5 @@
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+import { withLocalAI } from "./ai-chat.js";
 
 export function localSettings(env = process.env) {
   const url = new URL(env.OLLAMA_BASE_URL || "http://127.0.0.1:11435");
@@ -20,7 +21,10 @@ export function localSettings(env = process.env) {
   return { url: url.origin, model };
 }
 
-export async function localPlan({
+export function localPlan(options) {
+  return withLocalAI(() => rawLocalPlan(options));
+}
+async function rawLocalPlan({
   description,
   screenshot,
   schema,
@@ -112,7 +116,7 @@ export async function localPlan({
         "Local AI took too long. Try a shorter description or template mode.",
       );
     throw new Error(
-      "Local AI is not reachable. Start Fainted from Fainted Panel.exe.",
+      "Local AI is not reachable. Start seep from seep Panel.exe.",
     );
   }
   if (response.status === 404)

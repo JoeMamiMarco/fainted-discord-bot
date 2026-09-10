@@ -1,9 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { featureDefaults } from "./feature-config.js";
 
 export class Store {
-  constructor(path = process.env.DATABASE_PATH || "./data/fainted.sqlite") {
+  constructor(path = process.env.DATABASE_PATH || "./data/seep.sqlite") {
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
     this.db = new DatabaseSync(path);
     this.db.exec(`PRAGMA journal_mode=WAL;
@@ -29,17 +30,20 @@ export class Store {
     this.db.prepare("DELETE FROM kv WHERE guild=? AND key=?").run(guild, key);
   }
   config(guild) {
-    return this.get(guild, "config", {
-      welcome:
-        "Welcome {user} to {server}! Read the rules and introduce yourself.",
-      goodbye: "{name} left {server}.",
-      automod: false,
-      blockInvites: true,
-      mentionLimit: 6,
-      spamLimit: 6,
-      blockedWords: [],
-      leveling: true,
-    });
+    return {
+      ...featureDefaults,
+      ...this.get(guild, "config", {
+        welcome:
+          "Welcome {user} to {server}! Read the rules and introduce yourself.",
+        goodbye: "{name} left {server}.",
+        automod: false,
+        blockInvites: true,
+        mentionLimit: 6,
+        spamLimit: 6,
+        blockedWords: [],
+        leveling: true,
+      }),
+    };
   }
   configure(guild, patch) {
     return this.set(guild, "config", { ...this.config(guild), ...patch });
@@ -116,5 +120,20 @@ export class Store {
   }
   close() {
     if (this.db.isOpen) this.db.close();
+  }
+  items(guild, prefix) {
+    return this.db
+      .prepare("SELECT key,value FROM kv WHERE guild=? AND key LIKE ?")
+      .all(guild, prefix + "%")
+      .map((row) => ({ key: row.key, ...JSON.parse(row.value) }));
+  }
+  addXP(guild, user, xp) {
+    this.db
+      .prepare("INSERT OR IGNORE INTO members(guild,user) VALUES (?,?)")
+      .run(guild, user);
+    this.db
+      .prepare("UPDATE members SET xp=MAX(0,xp+?) WHERE guild=? AND user=?")
+      .run(Math.round(xp), guild, user);
+    return this.member(guild, user);
   }
 }

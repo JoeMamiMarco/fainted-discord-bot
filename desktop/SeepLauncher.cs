@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace FaintedDesktop {
+namespace SeepDesktop {
   sealed class ProcessJob : IDisposable {
     [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] static extern IntPtr CreateJobObject(IntPtr attributes, string name);
     [DllImport("kernel32.dll")] static extern bool SetInformationJobObject(IntPtr job, int infoClass, IntPtr info, uint size);
@@ -31,16 +31,8 @@ namespace FaintedDesktop {
 
   static class Program {
     [STAThread] static void Main(string[] args) {
-      Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
-      if(args.Length==2 && args[0]=="--preview"){using(var panel=new Dashboard())panel.Preview(args[1]);return;}
-      if(args.Length==2 && args[0]=="--self-test"){using(var panel=new Dashboard())panel.SelfTest(args[1]);return;}
-      if(args.Length==2 && args[0]=="--close-test"){using(var panel=new Dashboard())panel.CloseTest(args[1],false);return;}
-      if(args.Length==2 && args[0]=="--cancel-test"){using(var panel=new Dashboard())panel.CloseTest(args[1],true);return;}
-      string id=BitConverter.ToString(SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(AppDomain.CurrentDomain.BaseDirectory.ToLowerInvariant()))).Replace("-","").Substring(0,20);bool created;
-      using(var mutex=new Mutex(true,"Local\\FaintedPanel"+id,out created)){
-        if(!created){MessageBox.Show("Fainted's panel is already open.","Fainted");return;}
-        Application.Run(new Dashboard());
-      }
+      Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
+      Application.Run(new WebLauncher(args.Contains("--start"), args.Contains("--capture") ? args[Array.IndexOf(args,"--capture")+1] : null));
     }
   }
 }

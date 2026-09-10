@@ -70,7 +70,7 @@ test("local AI failures never fall back to cloud", async () => {
         throw new Error("ECONNREFUSED");
       },
     }),
-    /Start Fainted/,
+    /Start seep/,
   );
   assert.equal(calls, 1);
 });

@@ -1,5 +1,5 @@
 export function report(type, fields = {}) {
-  console.log(`@@FAINTED ${JSON.stringify({ type, ...fields })}`);
+  console.log(`@@SEEP ${JSON.stringify({ type, ...fields })}`);
 }
 
 export function explainError(error) {

@@ -1,0 +1,7 @@
+Built-in image generation was used for both artworks. The original logo was the identity reference for the cover. Outputs were resized to 1024x576, with an additional square black-padded Rich Presence export.
+
+BACKGROUND PROMPT:
+Create a finished premium brand background image for the Discord bot seep. Widescreen exactly 16:9 composition, intended export 1024x576. Pure opaque black background. Black and white only. Elegant fluid white ink ribbons and soft silver liquid contours clustered exclusively along the far left and right edges and lower corners, inspired by seepage and a flowing S. Keep the central 65 percent of the canvas plain black, empty, low contrast, for interface overlay. No text, no logo, no UI, no watermark. Minimal, sculptural, clean high contrast at edges with dark fading toward center. Landscape.
+
+COVER PROMPT:
+Create finished cover art for the Discord bot named seep. Widescreen 16:9, intended export 1024x576. Use the provided white flowing S logo as identity reference and preserve its recognizability. Pure opaque black background, strictly monochrome white and silver. Confident centered composition with this flowing white S mark above a beautiful bold lowercase wordmark reading exactly seep. Subtle sculptural fluid silver-white ribbons at the outer corners, lots of black negative space. Contemporary high-end minimal software brand, crisp restrained typography, no extra text, no colored accents, no fake UI, no watermark. This is an independent cover artwork, not an edit to the logo file.

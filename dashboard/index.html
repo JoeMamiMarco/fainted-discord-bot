@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>seep dashboard</title>
+    <link rel="icon" href="/seep-logo.png" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <aside>
+      <a class="brand" href="#overview"
+        ><img src="/seep-logo.png" alt="seep logo" /><b
+          >seep<span>dashboard</span></b
+        ></a
+      >
+      <div class="server-switch">
+        <span class="server-avatar">s</span>
+        <div>
+          <strong id="server-name">Your server</strong
+          ><small>Local workspace</small>
+        </div>
+        <span>⌄</span>
+      </div>
+      <nav id="navigation" aria-label="Main navigation"></nav>
+      <div class="sidebar-footer">
+        <span class="dot"></span> All features included<br /><small
+          >Local AI. No subscriptions.</small
+        >
+      </div>
+    </aside>
+    <div class="workspace">
+      <header>
+        <div class="breadcrumb">
+          Workspace <span>/</span> <b id="crumb">Overview</b>
+        </div>
+        <div class="header-actions">
+          <span id="connection" class="pill">Offline</span
+          ><button id="start" class="primary">Start bot</button
+          ><button id="stop">Stop</button
+          ><button id="restart" title="Restart bot">↻</button>
+        </div>
+      </header>
+      <div id="notice" role="status" hidden></div>
+      <main id="main"></main>
+      <footer>
+        <span>seep dashboard · made for your community</span
+        ><button id="exit" class="text-button">Shut down dashboard ↗</button>
+      </footer>
+    </div>
+    <div id="toast" role="status" hidden></div>
+    <dialog id="confirm">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-text"></p>
+      <div class="actions">
+        <button id="cancel-confirm">Cancel</button
+        ><button id="accept-confirm" class="primary">Confirm</button>
+      </div>
+    </dialog>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

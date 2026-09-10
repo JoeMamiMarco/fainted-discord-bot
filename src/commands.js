@@ -56,7 +56,7 @@ const reason = s("reason", "Reason for the moderation record", true, {
   max_length: 400,
 });
 export const commands = [
-  cmd("help", "Show the Fainted command guide"),
+  cmd("help", "Show the seep command guide"),
   cmd("warn", "Record a warning", [u(), reason], P.ModerateMembers),
   cmd("history", "Show recent moderation history", [u()], P.ModerateMembers),
   cmd(
@@ -224,7 +224,7 @@ export const commands = [
           true,
           { max_length: 1500 },
         ),
-        b("ai", "Use Fainted AI (local by default; no API key needed)", false),
+        b("ai", "Use seep AI (local by default; no API key needed)", false),
         {
           type: 11,
           name: "screenshot",
