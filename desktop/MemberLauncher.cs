@@ -8,7 +8,7 @@ using Microsoft.Web.WebView2.WinForms;
 namespace SeepMemberDesktop {
   sealed class MemberWindow : Form {
     readonly WebView2 view=new WebView2();readonly Label status=new Label();
-    public MemberWindow(){Text="seep member dashboard";ClientSize=new Size(1280,850);MinimumSize=new Size(1000,700);StartPosition=FormStartPosition.CenterScreen;BackColor=Color.Black;
+    public MemberWindow(){Text="seep member dashboard";Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);ClientSize=new Size(1280,850);MinimumSize=new Size(1000,700);StartPosition=FormStartPosition.CenterScreen;BackColor=Color.Black;
       status.Dock=DockStyle.Fill;status.TextAlign=ContentAlignment.MiddleCenter;status.ForeColor=Color.White;status.Text="Connecting to seep…";Controls.Add(status);view.Dock=DockStyle.Fill;view.DefaultBackgroundColor=Color.Black;view.Visible=false;Controls.Add(view);
       Shown+=async(s,e)=>{try {
         string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"member-server-url.txt"),url=File.Exists(path)?File.ReadAllText(path).Trim():"http://127.0.0.1:11438/";

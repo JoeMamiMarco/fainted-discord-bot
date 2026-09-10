@@ -16,7 +16,7 @@ namespace SeepDesktop {
     Process process; ProcessJob job; bool closing;
     readonly Timer timer=new Timer();
     public WebLauncher(bool start=false,string screenshot=null){
-      autoStart=start;capture=screenshot;Text="seep dashboard";ClientSize=new Size(1280,850);MinimumSize=new Size(1000,700);
+      autoStart=start;capture=screenshot;Text="seep dashboard";Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);ClientSize=new Size(1280,850);MinimumSize=new Size(1000,700);
       StartPosition=FormStartPosition.CenterScreen;BackColor=Color.Black;ForeColor=Color.White;Font=new Font("Segoe UI",10);
       status.Dock=DockStyle.Fill;status.TextAlign=ContentAlignment.MiddleCenter;status.Text="Opening seep dashboard...";Controls.Add(status);
       view.Dock=DockStyle.Fill;view.DefaultBackgroundColor=Color.Black;view.Visible=false;Controls.Add(view);
