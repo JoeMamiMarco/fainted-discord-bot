@@ -30,7 +30,34 @@ namespace SeepDesktop {
   }
 
   static class Program {
+    delegate bool WindowCallback(IntPtr window, IntPtr data);
+    [DllImport("user32.dll")] static extern bool EnumWindows(WindowCallback callback, IntPtr data);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint pid);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetWindowText(IntPtr window, StringBuilder text, int count);
+    [DllImport("user32.dll")] static extern bool ShowWindowAsync(IntPtr window, int command);
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
+    static bool RestoreExisting() {
+      bool found=false;
+      using(var current=Process.GetCurrentProcess()) {
+        foreach(var other in Process.GetProcessesByName(current.ProcessName)) {
+          using(other) {
+            if(other.Id==current.Id)continue;
+            try { if(!String.Equals(other.MainModule.FileName,current.MainModule.FileName,StringComparison.OrdinalIgnoreCase))continue; } catch { continue; }
+            EnumWindows((window,data)=>{
+              uint pid; GetWindowThreadProcessId(window,out pid);
+              if(pid!=(uint)other.Id)return true;
+              var title=new StringBuilder(256);GetWindowText(window,title,title.Capacity);
+              if(title.ToString()!="seep dashboard")return true;
+              ShowWindowAsync(window,9);SetForegroundWindow(window);found=true;return false;
+            },IntPtr.Zero);
+            if(found)return true;
+          }
+        }
+      }
+      return false;
+    }
     [STAThread] static void Main(string[] args) {
+      if(RestoreExisting())return;
       Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
       Application.Run(new WebLauncher(args.Contains("--start"), args.Contains("--capture") ? args[Array.IndexOf(args,"--capture")+1] : null));
     }
