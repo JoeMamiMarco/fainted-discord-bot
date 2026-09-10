@@ -53,13 +53,92 @@ export function validatePlan(plan) {
     throw new Error("Invalid roles or more than 30 channels.");
   return plan;
 }
+const textName = (name) =>
+  String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60) || "channel";
+const voiceName = (name) =>
+  String(name || "")
+    .trim()
+    .replace(/[\r\n@]/g, " ")
+    .replace(/\s+/g, " ")
+    .slice(0, 60) || "Voice";
+const roleName = (name) =>
+  String(name || "")
+    .trim()
+    .replace(/[\r\n@]/g, " ")
+    .replace(/\s+/g, " ")
+    .slice(0, 60);
+const reservedRole = (name) =>
+  /^(admin|administrator|owner|mod|moderator|staff|manager|server manager)$/i.test(
+    String(name || "").trim(),
+  );
+function ensureChannel(plan, categoryName, channel) {
+  let category = plan.categories.find(
+    (x) => x.name.toLowerCase() === categoryName.toLowerCase(),
+  );
+  if (!category) {
+    category = {
+      name: categoryName,
+      private: categoryName.toLowerCase().includes("staff"),
+      channels: [],
+    };
+    plan.categories.push(category);
+  }
+  if (
+    !category.channels.some(
+      (x) => textName(x.name) === textName(channel.name) && x.type === channel.type,
+    )
+  )
+    category.channels.push(channel);
+  if (channel.private) category.private = true;
+}
+export function normalizePlan(plan) {
+  const normalized = {
+    roles: [...new Set((plan.roles || []).map(roleName).filter(Boolean))]
+      .filter((x) => !reservedRole(x))
+      .slice(0, 8),
+    categories: [],
+  };
+  for (const raw of plan.categories || []) {
+    const category = {
+      name: roleName(raw.name || "COMMUNITY").toUpperCase(),
+      private: Boolean(raw.private),
+      channels: [],
+    };
+    const seen = new Set();
+    for (const ch of raw.channels || []) {
+      const type = ch.type === "voice" ? "voice" : "text";
+      const name = type === "voice" ? voiceName(ch.name) : textName(ch.name);
+      const key = `${type}:${textName(name)}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        category.channels.push({ name, type });
+      }
+    }
+    if (category.channels.length) normalized.categories.push(category);
+  }
+  ensureChannel(normalized, "INFORMATION", { name: "welcome", type: "text" });
+  ensureChannel(normalized, "INFORMATION", { name: "rules", type: "text" });
+  ensureChannel(normalized, "STAFF", {
+    name: "server-logs",
+    type: "text",
+    private: true,
+  });
+  return validatePlan(normalized);
+}
 export function templatePlan(description) {
   const theme = /cod|program|develop/i.test(description)
     ? "CODING PROJECTS"
     : /gam|esport/i.test(description)
       ? "GAMING"
       : "COMMUNITY";
-  return validatePlan({
+  return normalizePlan({
     roles: ["Member", "Updates"],
     categories: [
       {
@@ -198,7 +277,7 @@ export function parseLocalLayout(output, budget) {
       throw new Error("Local AI returned an invalid channel.");
     const normalized = channel.name.toLowerCase().replace(/\s+/g, "-");
     const staff =
-      /^(server-logs?|mod-logs?|moderation-logs?|staff-chat|mod-chat)$/.test(
+      /^(server-logs?|staff-logs?|mod-logs?|moderation-logs?|staff-chat|mod-chat)$/.test(
         normalized,
       );
     const categoryName = staff ? "STAFF" : channel.category;
@@ -212,7 +291,7 @@ export function parseLocalLayout(output, budget) {
     entry.channels.push({ name: channel.name, type: channel.type });
     categories.set(key, entry);
   }
-  return validatePlan({
+  return normalizePlan({
     roles: raw.roles,
     categories: [...categories.values()],
   });

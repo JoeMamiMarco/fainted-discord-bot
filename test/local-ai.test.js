@@ -104,6 +104,42 @@ test("server logs are always placed in a private staff category", () => {
   assert.equal(staff.private, true);
   assert.equal(staff.channels[0].name, "server-logs");
 });
+test("local layouts are cleaned before the dashboard can build them", () => {
+  const plan = parseLocalLayout(
+    JSON.stringify({
+      roles: ["Member", "Admin", "Moderator", "Updates"],
+      channels: [
+        {
+          name: "General Chat",
+          type: "text",
+          category: "Community Space",
+          private: false,
+        },
+        {
+          name: "General   Chat",
+          type: "text",
+          category: "Community Space",
+          private: false,
+        },
+        {
+          name: "Staff Logs",
+          type: "text",
+          category: "Community Space",
+          private: false,
+        },
+      ],
+    }),
+    10,
+  );
+  assert.deepEqual(plan.roles, ["Member", "Updates"]);
+  assert.ok(plan.categories.some((c) => c.channels.some((x) => x.name === "welcome")));
+  assert.ok(plan.categories.some((c) => c.channels.some((x) => x.name === "rules")));
+  const staff = plan.categories.find((c) => c.name === "STAFF");
+  assert.equal(staff.private, true);
+  assert.ok(staff.channels.some((x) => x.name === "server-logs"));
+  const community = plan.categories.find((c) => c.name === "COMMUNITY SPACE");
+  assert.deepEqual(community.channels, [{ name: "general-chat", type: "text" }]);
+});
 test("local AI is selected by default without any API key", async (t) => {
   const previous = process.env.AI_PROVIDER;
   delete process.env.AI_PROVIDER;

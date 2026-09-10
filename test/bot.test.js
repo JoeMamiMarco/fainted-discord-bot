@@ -347,7 +347,7 @@ test("server builder can be rerun without duplicating its completed layout", asy
     },
   };
   const first = await applyPlan(guild, templatePlan("social"));
-  assert.equal(first.created.length, 14);
+  assert.equal(first.created.length, 16);
   assert.ok(first.welcomeChannel);
   assert.ok(first.logChannel);
   const second = await applyPlan(guild, templatePlan("social"));
