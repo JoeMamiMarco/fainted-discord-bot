@@ -40,7 +40,7 @@ test("local settings reject remote endpoints and cloud model names", () => {
   ])
     assert.throws(() => localSettings({ OLLAMA_BASE_URL: url }));
   assert.throws(() => localSettings({ OLLAMA_MODEL: "qwen3:cloud" }));
-  assert.equal(localSettings({}).model, "qwen3-vl:2b-instruct");
+  assert.equal(localSettings({}).model, "qwen3-vl:4b-instruct");
 });
 test("local requests have no API credentials and release memory immediately", async () => {
   let request;

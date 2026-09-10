@@ -14,7 +14,7 @@ On a fresh clone, install Node.js **24+**, run `npm install`, and copy `.env.exa
 
 In Discord Developer Portal, enable **Server Members Intent** and **Message Content Intent**. Invite seep with `bot` and `applications.commands` scopes. Give it the permissions needed by the features you enable, and move its role above roles/members it should manage. Discord owner and role hierarchy rules always apply.
 
-Click **Install / repair AI** while the bot is stopped. The CPU-only local runtime and `qwen3-vl:2b-instruct` model download once (model approximately 1.9 GB). No AI API key, paid service or paid fallback is used. Press Start bot after setup.
+Click **Install / repair AI** while the bot is stopped. The CPU-only local runtime and `qwen3-vl:4b-instruct` model download once (model download approximately 3.3 GB). No AI API key, paid service or paid fallback is used. Press Start bot after setup.
 
 ## Discord login for members
 
@@ -89,3 +89,6 @@ Defaults use the artwork's public GitHub image URLs. To use uploaded Rich Presen
 Data stays in `data/` (SQLite); logs, downloaded AI and private desktop profiles stay in `runtime/`. Both are ignored by Git. OAuth sessions and tokens stay only in host memory and expire; a host restart requires another login. Saved chats persist across restarts.
 
 Sources: [Discord OAuth2](https://docs.discord.com/developers/topics/oauth2), [Permissions](https://docs.discord.com/developers/topics/permissions), [Rich Presence](https://docs.discord.com/developers/discord-social-sdk/development-guides/setting-rich-presence), [WebView2](https://learn.microsoft.com/en-us/microsoft-edge/webview2/).
+
+### Local AI model upgrade
+The default is Qwen3-VL 4B Instruct. A ten-channel layout test took about 24 seconds, preserved all requested names and types, and reported approximately 4 GiB loaded in Ollama. Memory and speed vary with input, especially images; 4–6 GB is an operating target, not a hard cap. The previously downloaded 2B model stays installed. To revert, set `OLLAMA_MODEL=qwen3-vl:2b-instruct` in your local `.env` and restart the bot. This is a manual fallback, not an automatic retry.

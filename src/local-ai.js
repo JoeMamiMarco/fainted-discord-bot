@@ -15,7 +15,7 @@ export function localSettings(env = process.env) {
     throw new Error(
       "Local AI must use a loopback address, such as http://127.0.0.1:11435.",
     );
-  const model = env.OLLAMA_MODEL?.trim() || "qwen3-vl:2b-instruct";
+  const model = env.OLLAMA_MODEL?.trim() || "qwen3-vl:4b-instruct";
   if (!/^[a-z0-9._-]+(?::[a-z0-9._-]+)?$/i.test(model) || /cloud/i.test(model))
     throw new Error("Choose an installed local model, not a cloud model.");
   return { url: url.origin, model };
