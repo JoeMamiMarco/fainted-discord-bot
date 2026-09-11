@@ -1,5 +1,10 @@
 export const featureDefaults = {
   aiMentions: true,
+  aiPersonality: "friendly",
+  aiMood: "cheerful",
+  aiHumor: "light",
+  aiEmoji: "occasional",
+  aiLength: "balanced",
   aiModeration: false,
   aiChannels: [],
   welcomeDM: false,
@@ -78,7 +83,10 @@ export function validatePatch(patch) {
     throw new Error("Invalid settings.");
   const clean = {};
   for (const [key, value] of Object.entries(patch)) {
-    if (booleans.has(key)) {
+    const styles = {aiPersonality:["friendly","professional","witty","nerdy","sarcastic"],aiMood:["cheerful","calm","energetic","serious"],aiHumor:["off","light","playful"],aiEmoji:["none","occasional","expressive"],aiLength:["brief","balanced","detailed"]};
+    if (styles[key]) {
+      if (!styles[key].includes(value)) throw new Error("Choose a valid " + key + " option.");
+    } else if (booleans.has(key)) {
       if (typeof value !== "boolean")
         throw new Error(`${key} must be on or off.`);
     } else if (ranges[key]) {

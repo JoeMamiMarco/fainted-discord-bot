@@ -432,6 +432,11 @@ function ai() {
           "Reply to mentions and replies",
           "Every AI answer includes a reply-to-continue hint.",
         ),
+        select("aiPersonality", "Personality", [["friendly","Friendly"],["professional","Professional"],["witty","Witty"],["nerdy","Nerdy"],["sarcastic","Gently sarcastic"]]),
+        select("aiMood", "Mood", [["cheerful","Cheerful"],["calm","Calm"],["energetic","Energetic"],["serious","Serious"]]),
+        select("aiHumor", "Humor", [["off","Off"],["light","Light humor"],["playful","Playful"]]),
+        select("aiEmoji", "Emoji usage", [["none","None"],["occasional","Occasional"],["expressive","Expressive"]]),
+        select("aiLength", "Reply length", [["brief","Brief"],["balanced","Balanced"],["detailed","Detailed"]]),
         json(
           "autoResponses",
           "Automatic responses",

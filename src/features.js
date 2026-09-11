@@ -188,7 +188,7 @@ export class Features {
     if (action === "snapshot") return this.snapshot();
     if (action === "settings") return this.settings(p);
     if (action === "chat")
-      return { reply: await localChat(String(p.question || "")) };
+      return { reply: await localChat(String(p.question || ""), { personality: this.store.config(g.id) }) };
     if (action === "analyze")
       return {
         reply: await localChat(

@@ -92,3 +92,7 @@ Sources: [Discord OAuth2](https://docs.discord.com/developers/topics/oauth2), [P
 
 ### Local AI model upgrade
 The default is Qwen3-VL 4B Instruct. A ten-channel layout test took about 24 seconds, preserved all requested names and types, and reported approximately 4 GiB loaded in Ollama. Memory and speed vary with input, especially images; 4–6 GB is an operating target, not a hard cap. The previously downloaded 2B model stays installed. To revert, set `OLLAMA_MODEL=qwen3-vl:2b-instruct` in your local `.env` and restart the bot. This is a manual fallback, not an automatic retry.
+
+### Personality
+In AI Assistant, server administrators can set personality, mood, humor, emoji frequency and reply length. Settings are saved per server and apply to dashboard chats and Discord mention/reply conversations. Defaults are friendly, cheerful, light humor, occasional emoji and balanced length. These are model instructions, not guaranteed formatting; they do not affect moderation classification or server building.
+
