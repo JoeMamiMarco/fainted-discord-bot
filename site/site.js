@@ -56,11 +56,11 @@ const card = ([id, name, description]) =>
 function workspace() {
   return (
     title(
-      "SEEP WORKSPACE",
-      "A home for your community.",
-      "This public frontend can plan and export templates. Live Discord controls and AI require your running backend.",
+      "SEEP DASHBOARD",
+      "Your servers. Your controls.",
+      "Sign in with Discord to see the servers you can manage, configure features and view their statistics.",
     ) +
-    `<div class="workspace"><aside aria-label="Workspace navigation"><a href="#templates">Template studio</a><a href="#docs">Command directory</a><a href="#features">Modules</a></aside><section class="stack"><div class="card"><span class="tag">Backend connection required</span><h2>Connect your dashboard</h2><p>Sign in with Discord on your trusted Seep host. Only manageable servers appear. This Pages site does not request your bot token or store Discord sessions.</p><form id="connect"><label class="field">Your hosted member dashboard URL<input id="backend" type="url" placeholder="https://seep.your-domain.example" required></label><button>Continue to Discord login ↗</button></form><p class="subtle">Owner controls remain on the protected owner service. For a remote host, use the documented SSH tunnel. A public backend address has not been configured for this deployment.</p></div><div class="grid">${featureCards.slice(1, 3).map(card).join("")}</div></section></div>`
+    '<section class="card"><h2>Continue with Discord</h2><p>The seep host runs on your PC. Start it with START-SEEP.cmd, then sign in below. No separate member app is needed.</p><a class="button" href="http://127.0.0.1:11438/auth/login">Sign in with Discord ↗</a><p class="subtle">Your verified owner account also gets a Bot controls tab. Closing your browser leaves seep online. This local address works on the PC running seep; other devices need a public host.</p></section>'
   );
 }
 function templates() {
@@ -178,25 +178,6 @@ function validate(value) {
   return value;
 }
 function bind(route) {
-  if (route === "dashboard")
-    document.querySelector("#connect").onsubmit = (e) => {
-      e.preventDefault();
-      try {
-        const url = new URL(document.querySelector("#backend").value);
-        if (
-          url.protocol !== "https:" ||
-          url.username ||
-          url.password ||
-          url.search ||
-          url.hash ||
-          url.pathname !== "/"
-        )
-          throw Error("Use the HTTPS origin of your trusted Seep host.");
-        location.href = url.origin;
-      } catch (e) {
-        notify(e.message);
-      }
-    };
   if (route === "docs") {
     const render = () => {
       const q = document.querySelector("#command-search").value.toLowerCase();

@@ -739,7 +739,7 @@ function backups() {
   )}</div>`;
 }
 function settings() {
-  return `${form("presence", "Discord Rich Presence", "Show seep artwork and dashboard activity on your Discord profile while this app is open. Discord desktop must be running.", [toggle("enabled", "Show seep on my Discord profile")], { enabled: state.presenceEnabled !== false }, (p) => api("presence", p), "Save presence")}<p class="instruction">${esc(state.presence || "Waiting for Discord desktop")}</p>${form("oauth", "Discord login for server managers", "Enter the OAuth2 client secret from Developer Portal → OAuth2. Leave it blank to keep the saved secret. Register the redirect URL shown below.", [text("secret", "OAuth2 client secret", "", "password"), text("origin", "Member dashboard origin")], { origin: "http://127.0.0.1:11438" }, (p) => api("oauth", p), "Save Discord login")}<div class="instruction">Redirect URL: <code id="oauth-redirect">http://127.0.0.1:11438/auth/callback</code><br><span id="oauth-status"></span><br>Open <b>seep member dashboard.exe</b> for the version without bot controls.</div><div class="columns"><div>${form("login", "Connect your Discord application", "Keep your token private. Leave the token field blank to keep the saved value.", [text("token", "Bot token", "", "password"), text("clientId", "Application ID"), text("guildId", "Server ID")], state.credentials || {}, (p) => api("credentials", p), "Save connection")}<div class="panel"><h2>Local AI</h2><p>Qwen3-VL 2B Instruct · runs on your CPU. The one-time model download is approximately 1.9 GB.</p><div class="actions"><button data-control="setup">Install / repair AI</button><button data-control="test-ai">Test local AI</button><button data-control="register">Sync commands</button></div></div></div><div class="panel"><h2>First-time setup</h2><p>Enable Server Members Intent and Message Content Intent in Developer Portal → Bot. Invite seep with the bot and applications.commands scopes.</p><p>Move seep's role above the roles it should manage. The bot needs the permissions for each feature you enable, including Manage Events for scheduled events and Manage Webhooks for webhook messages.</p><a class="primary" href="https://discord.com/developers/applications/${esc(state.credentials?.clientId || "")}" target="_blank" rel="noreferrer">Open Developer Portal ↗</a><div class="instruction">Use <b>Stop</b> to disconnect the bot, or close this desktop window to shut down seep and local AI.</div></div></div>`;
+  return `${form("presence", "Discord Rich Presence", "Show seep artwork and dashboard activity on your Discord profile while this app is open. Discord desktop must be running.", [toggle("enabled", "Show seep on my Discord profile")], { enabled: state.presenceEnabled !== false }, (p) => api("presence", p), "Save presence")}<p class="instruction">${esc(state.presence || "Waiting for Discord desktop")}</p>${form("oauth", "Discord login for server managers", "Enter the OAuth2 client secret from Developer Portal → OAuth2. Leave it blank to keep the saved secret. Register the redirect URL shown below.", [text("secret", "OAuth2 client secret", "", "password"), text("origin", "Member dashboard origin")], { origin: "http://127.0.0.1:11438" }, (p) => api("oauth", p), "Save Discord login")}<div class="instruction">Redirect URL: <code id="oauth-redirect">http://127.0.0.1:11438/auth/callback</code><br><span id="oauth-status"></span><br>Open <b>http://127.0.0.1:11438</b> in your browser and sign in with Discord.</div><div class="columns"><div>${form("login", "Connect your Discord application", "Keep your token private. Leave the token field blank to keep the saved value.", [text("token", "Bot token", "", "password"), text("clientId", "Application ID"), text("guildId", "Server ID")], state.credentials || {}, (p) => api("credentials", p), "Save connection")}<div class="panel"><h2>Local AI</h2><p>Qwen3-VL 2B Instruct · runs on your CPU. The one-time model download is approximately 1.9 GB.</p><div class="actions"><button data-control="setup">Install / repair AI</button><button data-control="test-ai">Test local AI</button><button data-control="register">Sync commands</button></div></div></div><div class="panel"><h2>First-time setup</h2><p>Enable Server Members Intent and Message Content Intent in Developer Portal → Bot. Invite seep with the bot and applications.commands scopes.</p><p>Move seep's role above the roles it should manage. The bot needs the permissions for each feature you enable, including Manage Events for scheduled events and Manage Webhooks for webhook messages.</p><a class="primary" href="https://discord.com/developers/applications/${esc(state.credentials?.clientId || "")}" target="_blank" rel="noreferrer">Open Developer Portal ↗</a><div class="instruction">Use <b>Stop</b> to disconnect the bot, or close this desktop window to shut down seep and local AI.</div></div></div>`;
 }
 function help() {
   return `<div class="columns"><section class="panel"><h2>Moderation</h2><p>/warn · /history · /timeout · /untimeout · /kick · /ban · /unban · /purge · /slowmode · /lock · /unlock · /inactive</p><h2>Community</h2><p>/rank · /leaderboard · /invites · /invite-leaderboard · /analytics · /poll · /ticket · /role-panel · /onboarding</p><h2>Server design</h2><p><code>/server plan</code> with <code>ai:true</code> creates a local AI draft. Attach a screenshot to use it as a visual layout reference. Review the preview before Build.</p><h2>Talk to seep</h2><p><code>@seep your question</code> → seep replies in the same channel. No API key needed.</p></section><section class="panel"><h2>Your bot, your machine</h2><p>All software features are included. Your computer must be on and connected for the bot to respond. Model quality and speed depend on your hardware; local AI can make mistakes.</p><p>Security features are opt-in and can only act within Discord's permissions and role hierarchy. AI moderation samples selected channels to stay light; it is not an exhaustive safety filter.</p><p>There is no paid support tier or external support team bundled with seep.</p></section></div>`;
@@ -811,6 +811,10 @@ async function refreshSnapshot() {
   snapshot = await act("snapshot");
 }
 function render() {
+  if (memberMode && location.hash === "#owner" && memberSession?.owner) {
+    void showOwner();
+    return;
+  }
   route = location.hash.slice(1) || "overview";
   if (!views[route] || (memberMode && ["settings", "activity"].includes(route)))
     route = "overview";
@@ -1046,6 +1050,7 @@ async function control(action) {
 let polling = false,
   connectionLost = false;
 async function poll() {
+  if (memberMode && route === "owner") return;
   if (memberMode && (!selectedGuild || !memberSession?.user)) return;
   if (memberMode && Date.now() - lastMemberPoll < 30000) return;
   lastMemberPoll = Date.now();
@@ -1085,9 +1090,54 @@ async function poll() {
     polling = false;
   }
 }
+async function showOwner() {
+  if (!memberSession?.owner) return;
+  route = "owner";
+  location.hash = "owner";
+  const renderOwner = async () => {
+    const x = await api("owner-state");
+    $("#main").innerHTML =
+      heading(
+        "Bot controls",
+        "Only your verified Discord account can access these controls. Closing this tab leaves seep running.",
+      ) +
+      '<section class="panel"><h2>' +
+      esc(x.status) +
+      "</h2><p>" +
+      esc(x.message || "") +
+      "</p><p>AI: " +
+      esc(x.ai || "Stopped") +
+      "</p><p>Active requests: " +
+      x.pending +
+      '</p><div class="actions"><button id="owner-start" ' +
+      (x.active ? "disabled" : "") +
+      '>Start bot</button><button id="owner-stop" ' +
+      (!x.active ? "disabled" : "") +
+      '>Stop bot</button><button id="owner-restart">Restart bot</button><button id="owner-refresh">Refresh status</button></div><p id="owner-result" role="status"></p></section>';
+    for (const action of ["start", "stop", "restart"])
+      $("#owner-" + action).onclick = async () => {
+        if (
+          action !== "start" &&
+          !confirm(
+            "Stop seep? This interrupts any active AI requests or builds. Saved build progress can be reviewed after restarting.",
+          )
+        )
+          return;
+        try {
+          await api("owner-control", { action, confirm: true });
+          await renderOwner();
+        } catch (e) {
+          $("#owner-result").textContent = e.message;
+        }
+      };
+    $("#owner-refresh").onclick = renderOwner;
+  };
+  await renderOwner();
+}
 async function memberLogin() {
   memberSession = await api("session");
   if (!memberSession.user) {
+    $("#owner-tab")?.remove();
     $("#navigation").innerHTML = "";
     $("#connection").textContent = "Signed out";
     $("#main").innerHTML =
@@ -1123,6 +1173,14 @@ async function memberLogin() {
     return;
   }
   $("#connection").textContent = memberSession.user.username;
+  if (memberSession.owner && !$("#owner-tab")) {
+    const b = document.createElement("button");
+    b.id = "owner-tab";
+    b.textContent = "Owner · Bot controls";
+    b.onclick = () => showOwner().catch((e) => notify(e.message));
+    $("#navigation").before(b);
+  }
+  if (!memberSession.owner) $("#owner-tab")?.remove();
   try {
     guilds = await api("guilds");
   } catch (e) {
@@ -1164,6 +1222,15 @@ async function memberLogin() {
       );
       return;
     }
+    if (g.installed === null) {
+      $("#main").innerHTML =
+        heading(
+          "Seep is offline",
+          "Your Discord servers are available. Start the bot from Owner · Bot controls, then refresh your servers.",
+        ) + '<button id="refresh-offline">Refresh servers</button>';
+      $("#refresh-offline").onclick = memberLogin;
+      return;
+    }
     if (!g.installed) {
       $("#main").innerHTML =
         heading(
@@ -1179,7 +1246,8 @@ async function memberLogin() {
     await poll();
   };
   $("#guild-picker").onchange = choose;
-  await choose();
+  if (location.hash === "#owner" && memberSession.owner) await showOwner();
+  else await choose();
 }
 if (memberMode) {
   $("#exit").onclick = async () => {

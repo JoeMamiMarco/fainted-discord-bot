@@ -112,7 +112,7 @@ function ensureChannel(plan, categoryName, channel) {
     category.channels.push(channel);
   if (channel.private) category.private = true;
 }
-export function normalizePlan(plan) {
+export function normalizePlan(plan, { defaults = true } = {}) {
   const normalized = {
     roles: [...new Set((plan.roles || []).map(roleName).filter(Boolean))]
       .filter((x) => !reservedRole(x))
@@ -137,13 +137,15 @@ export function normalizePlan(plan) {
     }
     if (category.channels.length) normalized.categories.push(category);
   }
-  ensureChannel(normalized, "INFORMATION", { name: "welcome", type: "text" });
-  ensureChannel(normalized, "INFORMATION", { name: "rules", type: "text" });
-  ensureChannel(normalized, "STAFF", {
-    name: "server-logs",
-    type: "text",
-    private: true,
-  });
+  if (defaults) {
+    ensureChannel(normalized, "INFORMATION", { name: "welcome", type: "text" });
+    ensureChannel(normalized, "INFORMATION", { name: "rules", type: "text" });
+    ensureChannel(normalized, "STAFF", {
+      name: "server-logs",
+      type: "text",
+      private: true,
+    });
+  }
   return validatePlan(normalized);
 }
 export function templatePlan(description) {
@@ -245,7 +247,7 @@ export function layoutBudget(description) {
     twelve: 12,
   };
   const match =
-    /(?:at most|up to|maximum(?: of)?|no more than)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve)\s+channels/i.exec(
+    /(?:exactly|only|at most|up to|maximum(?: of)?|no more than)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve)\s+channels/i.exec(
       description,
     );
   return match
@@ -311,10 +313,13 @@ export function parseLocalLayout(output, budget) {
     entry.channels.push({ name: channel.name, type: channel.type });
     categories.set(key, entry);
   }
-  return normalizePlan({
-    roles: raw.roles,
-    categories: [...categories.values()],
-  });
+  return normalizePlan(
+    {
+      roles: raw.roles,
+      categories: [...categories.values()],
+    },
+    { defaults: false },
+  );
 }
 async function generateLocalLayout(description, screenshot) {
   const budget = layoutBudget(description);

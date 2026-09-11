@@ -48,6 +48,10 @@ export function createMemberDashboard({
       secure: u.protocol === "https:",
     };
   }
+  function isOwner(session) {
+    const id = env().SEEP_OWNER_ID;
+    return /^\d{17,20}$/.test(id || "") && session?.user.id === id;
+  }
   async function discord(path, token, options = {}) {
     const r = await fetchFn(api + path, {
       ...options,
@@ -254,7 +258,7 @@ export function createMemberDashboard({
         return send(
           200,
           s
-            ? { user: s.user, csrf: s.csrf }
+            ? { user: s.user, csrf: s.csrf, owner: isOwner(s) }
             : { user: null, configured: !!cfg.secret },
         );
       }
@@ -314,19 +318,49 @@ export function createMemberDashboard({
         );
         return send(200, { ok: true });
       }
+      if (path === "/api/owner-state" || path === "/api/owner-control") {
+        if (!isOwner(s))
+          return send(403, {
+            error: "Only the seep owner can control the bot.",
+          });
+        if (req.method === "GET" && path === "/api/owner-state")
+          return send(200, {
+            status: controller.state.status,
+            active: !!controller.child,
+            pending: controller.pending?.size || 0,
+            message: controller.state.message,
+            ai: controller.state.ai,
+          });
+        if (req.method === "POST" && path === "/api/owner-control") {
+          if (!["start", "stop", "restart"].includes(body.action))
+            return send(400, { error: "Unknown bot control." });
+          if (body.action !== "start" && body.confirm !== true)
+            return send(400, {
+              error:
+                "Confirm stopping the bot; active requests will be interrupted.",
+            });
+          if (body.action !== "start") await controller.stop();
+          if (body.action !== "stop") controller.start();
+          return send(200, { ok: true, status: controller.state.status });
+        }
+        return send(405, { error: "Method not allowed." });
+      }
       if (req.method === "GET" && path === "/api/guilds") {
         const guilds = await discord(
           "/users/@me/guilds?limit=200",
           s.accessToken,
         );
-        const installed = await controller.request("guilds");
+        const botOnline = ["online", "limited"].includes(
+          controller.state.status,
+        );
+        const installed = botOnline ? await controller.request("guilds") : [];
         return send(
           200,
           guilds.filter(canManage).map((g) => ({
             id: g.id,
             name: g.name,
             icon: g.icon,
-            installed: installed.includes(g.id),
+            installed: botOnline ? installed.includes(g.id) : null,
             invite: `https://discord.com/oauth2/authorize?client_id=${cfg.clientId}&scope=bot%20applications.commands&permissions=0&guild_id=${g.id}&disable_guild_select=true`,
           })),
         );

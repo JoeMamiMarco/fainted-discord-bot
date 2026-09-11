@@ -70,7 +70,7 @@ test("local AI failures never fall back to cloud", async () => {
         throw new Error("ECONNREFUSED");
       },
     }),
-    /Start seep/,
+    /Start bot/,
   );
   assert.equal(calls, 1);
 });
@@ -95,6 +95,13 @@ test("local screenshot fetching blocks arbitrary destinations", async () => {
 test("explicit channel budgets are enforced in converted layouts", () => {
   assert.equal(layoutBudget("at most eight channels"), 8);
   assert.equal(layoutBudget("up to 40 channels"), 40);
+  assert.equal(layoutBudget("exactly 6 channels"), 6);
+  assert.equal(
+    parseLocalLayout(JSON.stringify(layout), 2).categories.flatMap(
+      (c) => c.channels,
+    ).length,
+    2,
+  );
   assert.equal(layoutBudget("gaming community"), 100);
   assert.throws(() => parseLocalLayout(JSON.stringify(layout), 1));
 });
@@ -132,15 +139,10 @@ test("local layouts are cleaned before the dashboard can build them", () => {
     10,
   );
   assert.deepEqual(plan.roles, ["Member", "Updates"]);
-  assert.ok(
-    plan.categories.some((c) => c.channels.some((x) => x.name === "welcome")),
-  );
-  assert.ok(
-    plan.categories.some((c) => c.channels.some((x) => x.name === "rules")),
-  );
+  assert.equal(plan.categories.flatMap((c) => c.channels).length, 2);
   const staff = plan.categories.find((c) => c.name === "STAFF");
   assert.equal(staff.private, true);
-  assert.ok(staff.channels.some((x) => x.name === "server-logs"));
+  assert.ok(staff.channels.some((x) => x.name === "staff-logs"));
   const community = plan.categories.find(
     (c) => c.name.toUpperCase() === "COMMUNITY SPACE",
   );

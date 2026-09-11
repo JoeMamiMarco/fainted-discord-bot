@@ -1,3 +1,4 @@
 @echo off
 cd /d "%~dp0"
-start "" "%~dp0seep dashboard.exe" --start
+"%~dp0runtime\node\node.exe" "%~dp0scripts\start-web.js"
+if errorlevel 1 pause

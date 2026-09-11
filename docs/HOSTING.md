@@ -38,3 +38,11 @@ Coding context is off by default and stored only in memory when enabled. It expi
 ## Operational limits
 
 No public community template gallery/moderation service, distributed job queue, multi-process sharding, automatic full rollback, privileged permission cloning, or production SLA is provided. Imported templates intentionally reject unsupported fields. Existing framework code is JavaScript; syntax validation and behavior tests are enforced, but a full strict-TypeScript migration is not claimed. Legal pages are labeled drafts and need operator review. Complete live Discord feature parity and WCAG conformance require further audits.
+
+## Browser dashboard on your PC
+
+Run `START-SEEP.cmd`, then open http://127.0.0.1:11438 and sign in with Discord. The host runs in the background independently of browser windows. Do not run the legacy owner desktop executable at the same time; its shutdown button closes the shared host.
+
+Register `http://127.0.0.1:11438/auth/callback` under Discord Developer Portal OAuth2 redirects. Set `SEEP_OWNER_ID` to your immutable Discord user ID to grant the Owner bot-controls tab. A matching display name or username grants no access. Start, stop and restart affect the bot and local AI; the dashboard stays up so you can restart them. Stopping during a build interrupts it; review saved progress before resuming.
+
+Users see only servers they own or can manage, with per-action permission checks. Server statistics are recorded activity, not fabricated history. Other PCs cannot access your loopback host; this configuration intentionally does not publish your PC to the internet.

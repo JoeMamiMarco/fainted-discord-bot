@@ -137,12 +137,12 @@ async function rawLocalPlan({
         "Local AI took too long. Try a shorter description or template mode.",
       );
     throw new Error(
-      "Local AI is not reachable. Start seep from seep Panel.exe.",
+      "Local AI is not reachable. Use Start bot in the dashboard Owner tab.",
     );
   }
   if (response.status === 404)
     throw new Error(
-      `Local model ${model} is not installed. Run Setup Local AI from the panel.`,
+      `Local model ${model} is not installed. Install the local model before using AI.`,
     );
   if (!response.ok)
     throw new Error(

@@ -184,9 +184,18 @@ test("member OAuth requires state binding, filters guilds, blocks owner controls
   const chats = new Chats(":memory:"),
     gid = "123456789012345678",
     calls = [];
-  let permitted = true;
+  let permitted = true,
+    ownerId = "";
   const controller = {
     state: { status: "online" },
+    start: () => {
+      controller.child = {};
+      controller.state.status = "starting";
+    },
+    stop: async () => {
+      controller.child = null;
+      controller.state.status = "offline";
+    },
     request: async (a, p) => {
       calls.push({ a, p });
       if (a === "guilds") return [gid];
@@ -220,6 +229,7 @@ test("member OAuth requires state binding, filters guilds, blocks owner controls
     env: () => ({
       DISCORD_CLIENT_ID: "999456789012345678",
       DISCORD_CLIENT_SECRET: "test-secret",
+      SEEP_OWNER_ID: ownerId,
     }),
     port: 0,
     fetchFn,
@@ -286,6 +296,35 @@ test("member OAuth requires state binding, filters guilds, blocks owner controls
   assert.equal((await post("control", { action: "stop" })).status, 404);
   assert.equal((await post("action", { action: "stop" })).status, 400);
   assert.ok(calls.every((x) => x.a !== "stop"));
+  assert.equal((await post("owner-control", { action: "start" })).status, 403);
+  ownerId = "Alice";
+  assert.equal((await post("owner-control", { action: "start" })).status, 403);
+  ownerId = session.user.id;
+  assert.equal(
+    (await post("owner-control", { action: "start" }, "bad")).status,
+    403,
+  );
+  assert.equal((await post("owner-control", { action: "stop" })).status, 400);
+  assert.equal(
+    (await post("owner-control", { action: "stop", confirm: true })).status,
+    200,
+  );
+  const offlineGuilds = await (
+    await fetch(origin + "/api/guilds", { headers: auth })
+  ).json();
+  assert.equal(offlineGuilds[0].installed, null);
+  assert.equal((await post("owner-control", { action: "start" })).status, 200);
+  assert.equal(controller.state.status, "starting");
+  assert.equal(
+    (await post("owner-control", { action: "shutdown", confirm: true })).status,
+    400,
+  );
+  ownerId = "";
+  assert.equal(
+    (await fetch(origin + "/api/owner-state", { headers: auth })).status,
+    403,
+  );
+  controller.state.status = "online";
   const chat = await (await post("chats", { action: "create" })).json();
   assert.ok(chat.id);
   permitted = false;
