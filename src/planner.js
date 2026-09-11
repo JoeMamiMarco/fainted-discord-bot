@@ -37,7 +37,9 @@ export function validatePlan(plan) {
           : "";
       if (
         !name(ch.name) ||
-        !["text", "voice", "forum", "announcement", "stage", "media"].includes(ch.type) ||
+        !["text", "voice", "forum", "announcement", "stage", "media"].includes(
+          ch.type,
+        ) ||
         channelNames.has(normalized)
       )
         throw new Error("Invalid or duplicate channel.");
@@ -79,6 +81,17 @@ const reservedRole = (name) =>
     String(name || "").trim(),
   );
 function ensureChannel(plan, categoryName, channel) {
+  if (
+    plan.categories.some((c) =>
+      c.channels.some(
+        (ch) =>
+          textName(ch.name) === textName(channel.name) &&
+          ch.type === channel.type &&
+          (!channel.private || c.private),
+      ),
+    )
+  )
+    return;
   let category = plan.categories.find(
     (x) => x.name.toLowerCase() === categoryName.toLowerCase(),
   );
@@ -92,7 +105,8 @@ function ensureChannel(plan, categoryName, channel) {
   }
   if (
     !category.channels.some(
-      (x) => textName(x.name) === textName(channel.name) && x.type === channel.type,
+      (x) =>
+        textName(x.name) === textName(channel.name) && x.type === channel.type,
     )
   )
     category.channels.push(channel);
@@ -196,7 +210,10 @@ export const schema = object({
         maxItems: 6,
         items: object({
           name: { type: "string", minLength: 1, maxLength: 60 },
-          type: { type: "string", enum: ["text", "voice", "forum", "announcement", "stage", "media"] },
+          type: {
+            type: "string",
+            enum: ["text", "voice", "forum", "announcement", "stage", "media"],
+          },
         }),
       },
     }),
@@ -251,7 +268,10 @@ export function localLayoutSchema(budget) {
       maxItems: budget,
       items: object({
         name: { type: "string", minLength: 1, maxLength: 60 },
-        type: { type: "string", enum: ["text", "voice", "forum", "announcement", "stage", "media"] },
+        type: {
+          type: "string",
+          enum: ["text", "voice", "forum", "announcement", "stage", "media"],
+        },
         category: { type: "string", minLength: 1, maxLength: 60 },
         private: { type: "boolean" },
       }),
@@ -363,12 +383,27 @@ export async function applyPlan(guild, plan, supportRole, progress = () => {}) {
         `Existing ${category.name} is private. Choose a different category name.`,
       );
   }
-  const specs = plan.categories.flatMap(c => c.channels);
-  if (specs.some(c => ["forum", "announcement", "stage"].includes(c.type)) && !guild.features?.includes("COMMUNITY")) throw new Error("Enable Community in Discord Server Settings before building forum, announcement or stage channels.");
-  if (specs.some(c => c.type === "media") && !guild.features?.includes("ROLE_SUBSCRIPTIONS_ENABLED")) throw new Error("Discord media channels are unavailable in this server. Request a forum instead.");
-  if (plan.categories.some(c => c.channels.length > 50)) throw new Error("Use at most 50 channels per category.");
+  const specs = plan.categories.flatMap((c) => c.channels);
+  if (
+    specs.some((c) => ["forum", "announcement", "stage"].includes(c.type)) &&
+    !guild.features?.includes("COMMUNITY")
+  )
+    throw new Error(
+      "Enable Community in Discord Server Settings before building forum, announcement or stage channels.",
+    );
+  if (
+    specs.some((c) => c.type === "media") &&
+    !guild.features?.includes("ROLE_SUBSCRIPTIONS_ENABLED")
+  )
+    throw new Error(
+      "Discord media channels are unavailable in this server. Request a forum instead.",
+    );
+  if (plan.categories.some((c) => c.channels.length > 50))
+    throw new Error("Use at most 50 channels per category.");
   const created = [];
+  progress(created);
   for (const name of plan.roles) {
+    progress(created);
     if (!guild.roles.cache.some((r) => r.name === name)) {
       const role = await guild.roles.create({
         name,
@@ -382,6 +417,7 @@ export async function applyPlan(guild, plan, supportRole, progress = () => {}) {
   let welcomeChannel = null,
     logChannel = null;
   for (const category of plan.categories) {
+    progress(created);
     let parent = guild.channels.cache.find(
       (x) => x.type === ChannelType.GuildCategory && x.name === category.name,
     );
@@ -422,8 +458,15 @@ export async function applyPlan(guild, plan, supportRole, progress = () => {}) {
       progress(created);
     }
     for (const spec of category.channels) {
-      const type =
-        ({text: ChannelType.GuildText, voice: ChannelType.GuildVoice, forum: ChannelType.GuildForum, announcement: ChannelType.GuildAnnouncement, stage: ChannelType.GuildStageVoice, media: ChannelType.GuildMedia})[spec.type];
+      progress(created);
+      const type = {
+        text: ChannelType.GuildText,
+        voice: ChannelType.GuildVoice,
+        forum: ChannelType.GuildForum,
+        announcement: ChannelType.GuildAnnouncement,
+        stage: ChannelType.GuildStageVoice,
+        media: ChannelType.GuildMedia,
+      }[spec.type];
       const normalized =
         spec.type === "text"
           ? spec.name.toLowerCase().replace(/\s+/g, "-")

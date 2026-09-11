@@ -172,6 +172,10 @@ export class Controller {
     const closed = once(p, "close");
     p.stdin.write("stop\n");
     const timer = setTimeout(() => {
+      if (process.platform !== "win32") {
+        p.kill("SIGKILL");
+        return;
+      }
       const killer = spawn(
         "taskkill.exe",
         ["/PID", String(p.pid), "/T", "/F"],
@@ -536,6 +540,7 @@ if (
     const url = await app.listen();
     await app.startMembers();
     app.startPresence();
+    if (process.env.SEEP_AUTOSTART === "true") app.controller.start();
     mkdirSync(join(root, "runtime"), { recursive: true });
     writeFileSync(
       join(root, "runtime", "dashboard-session.json"),

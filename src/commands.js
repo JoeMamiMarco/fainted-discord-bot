@@ -56,6 +56,81 @@ const reason = s("reason", "Reason for the moderation record", true, {
   max_length: 400,
 });
 export const commands = [
+  cmd("code", "Generate, explain and review code without executing it", [
+    ...[
+      "generate",
+      "explain",
+      "debug",
+      "review",
+      "convert",
+      "test",
+      "document",
+      "optimize",
+    ].map((task) =>
+      sub(task, task + " code with seep", [
+        s("prompt", "Requirements or code (never include secrets)", true, {
+          max_length: 6000,
+        }),
+        s("language", "Language or conversion target", false, {
+          max_length: 60,
+        }),
+        {
+          type: 11,
+          name: "file",
+          description: "Optional text/code file under 64 KB",
+          required: false,
+        },
+        b("remember", "Keep private context for 30 minutes", false),
+      ]),
+    ),
+    sub("reset", "Delete your private coding context"),
+  ]),
+  cmd(
+    "template",
+    "Save, import and preview private structural templates",
+    [
+      sub("list", "List your saved templates"),
+      sub("create", "Copy this server structure", [
+        s("name", "Template name", true, { max_length: 80 }),
+      ]),
+      sub("preset", "Preview a community preset", [
+        s("theme", "Template theme", true, {
+          choices: [
+            "gaming",
+            "development",
+            "education",
+            "creators",
+            "support",
+            "business",
+            "study",
+            "roleplay",
+            "esports",
+            "marketplace",
+            "friends",
+          ].map((value) => ({ name: value, value })),
+        }),
+      ]),
+      sub("preview", "Preview a saved template", [
+        s("id", "Saved template ID", true),
+      ]),
+      sub("export", "Export a saved template", [
+        s("id", "Saved template ID", true),
+      ]),
+      sub("import", "Import a Seep template file", [
+        {
+          type: 11,
+          name: "file",
+          description: "Seep JSON file",
+          required: true,
+        },
+      ]),
+      sub("delete", "Delete a saved template", [
+        s("id", "Saved template ID", true),
+        b("confirm", "Confirm deletion", true),
+      ]),
+    ],
+    P.Administrator,
+  ),
   cmd("help", "Show the seep command guide"),
   cmd("warn", "Record a warning", [u(), reason], P.ModerateMembers),
   cmd("history", "Show recent moderation history", [u()], P.ModerateMembers),

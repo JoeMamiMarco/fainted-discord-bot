@@ -13,6 +13,16 @@ export function canManage(guild) {
 }
 const allowed = new Set([
   "snapshot",
+  "code",
+  "template-list",
+  "template-save",
+  "template-export",
+  "template-delete",
+  "template-copy",
+  "template-preview",
+  "build-history",
+  "build-cancel",
+  "build-resume-preview",
   "chat",
   "analyze",
   "plan",
@@ -39,7 +49,14 @@ export async function authorizeAction(guild, userId, action, payload = {}) {
   const member = await guild.members.fetch({ user: userId, force: true });
   if (!member.permissions.has(P.ManageGuild))
     throw new Error("You need Manage Server or Administrator in this server.");
+  if (
+    action.startsWith("template-") &&
+    !member.permissions.has(P.Administrator)
+  )
+    throw new Error("Administrator is required for templates.");
   const requires = {
+    "build-cancel": [P.ManageChannels, P.ManageRoles],
+    "build-resume-preview": [P.ManageChannels, P.ManageRoles],
     build: [P.ManageChannels, P.ManageRoles],
     lockdown: [P.ManageChannels],
     unlock: [P.ManageChannels],

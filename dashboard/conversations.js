@@ -15,6 +15,7 @@ export async function mountConversations({
   onDraft,
   notify,
   scope,
+  preserveInitialDraft = false,
 }) {
   const root = document.getElementById("conversations");
   if (!root) return;
@@ -24,7 +25,7 @@ export async function mountConversations({
     busy = false;
   $("#instant-option").hidden = kind !== "plan";
   $("#screenshot-option").hidden = kind !== "plan";
-  function show(chat) {
+  function show(chat, initial = false) {
     selected = chat;
     sessionStorage.setItem(key, chat.id);
     $("#chat-messages").innerHTML = chat.messages.length
@@ -40,7 +41,7 @@ export async function mountConversations({
           : "Ask a question. Your previous messages help seep follow the conversation.") +
         "</p></div>";
     $("#chat-messages").scrollTop = $("#chat-messages").scrollHeight;
-    if (kind === "plan")
+    if (kind === "plan" && !(initial && preserveInitialDraft))
       onDraft(chat.messages.filter((m) => m.draft).at(-1)?.draft || null);
   }
   async function refresh() {
@@ -108,8 +109,14 @@ export async function mountConversations({
       let screenshot = null;
       const file = kind === "plan" ? $("#chat-image").files[0] : null;
       if (file) {
-        if (file.size > 8 * 1024 * 1024) throw new Error("Screenshot must be under 8 MB.");
-        const data = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result.split(",")[1]); reader.onerror = reject; reader.readAsDataURL(file); });
+        if (file.size > 8 * 1024 * 1024)
+          throw new Error("Screenshot must be under 8 MB.");
+        const data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
         screenshot = { data, size: file.size, contentType: file.type };
       }
       if (!selected) selected = await api("chats", { action: "create", kind });
@@ -142,7 +149,7 @@ export async function mountConversations({
     const id = sessionStorage.getItem(key);
     if (id)
       try {
-        show(await api("chats?id=" + id));
+        show(await api("chats?id=" + id), true);
       } catch {
         sessionStorage.removeItem(key);
       }

@@ -29,7 +29,7 @@ io.on("line", (line) => {
   if (line.trim() === "stop") void stop();
   else if (
     line.startsWith("@@REQUEST ") &&
-    line.length < 80000 &&
+    line.length < 12000000 &&
     botChild &&
     !stopping
   )
@@ -92,6 +92,14 @@ async function stop(code = 0) {
   for (const p of active)
     if (p.exitCode === null && p.pid)
       await new Promise((done) => {
+        if (process.platform !== "win32") {
+          p.kill("SIGTERM");
+          setTimeout(() => {
+            if (p.exitCode === null) p.kill("SIGKILL");
+            done();
+          }, 1500);
+          return;
+        }
         const killer = spawn(
           "taskkill.exe",
           ["/PID", String(p.pid), "/T", "/F"],
@@ -107,6 +115,13 @@ async function stop(code = 0) {
 }
 async function startLocal() {
   const { url } = localSettings();
+  if (process.env.OLLAMA_EXTERNAL === "true") {
+    const response = await fetch(url + "/api/version", {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) throw new Error("External local Ollama is not ready.");
+    return;
+  }
   const binary = join(root, "runtime", "ollama", "ollama.exe");
   if (!existsSync(binary))
     throw new Error("Local AI runtime is missing. Click Setup Local AI first.");

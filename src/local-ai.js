@@ -43,48 +43,60 @@ async function rawLocalPlan({
     )
       throw new Error("Use a PNG, JPEG, or WebP screenshot under 8 MB.");
     if (screenshot.data) {
-      if (typeof screenshot.data !== "string" || screenshot.data.length > 4 * Math.ceil(MAX_IMAGE_BYTES / 3) || !/^[A-Za-z0-9+/]+={0,2}$/.test(screenshot.data)) throw new Error("Invalid screenshot data.");
+      if (
+        typeof screenshot.data !== "string" ||
+        screenshot.data.length > 4 * Math.ceil(MAX_IMAGE_BYTES / 3) ||
+        !/^[A-Za-z0-9+/]+={0,2}$/.test(screenshot.data)
+      )
+        throw new Error("Invalid screenshot data.");
       const bytes = Buffer.from(screenshot.data, "base64");
-      if (bytes.length > MAX_IMAGE_BYTES || bytes.length < 12) throw new Error("Invalid screenshot size.");
-      const valid = bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])) || (bytes[0] === 255 && bytes[1] === 216) || (bytes.toString("ascii",0,4) === "RIFF" && bytes.toString("ascii",8,12) === "WEBP");
+      if (bytes.length > MAX_IMAGE_BYTES || bytes.length < 12)
+        throw new Error("Invalid screenshot size.");
+      const valid =
+        bytes
+          .subarray(0, 8)
+          .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ||
+        (bytes[0] === 255 && bytes[1] === 216) ||
+        (bytes.toString("ascii", 0, 4) === "RIFF" &&
+          bytes.toString("ascii", 8, 12) === "WEBP");
       if (!valid) throw new Error("Use an actual PNG, JPEG or WebP image.");
       user.images = [screenshot.data];
     } else {
-    const imageURL = new URL(screenshot.url);
-    if (
-      imageURL.protocol !== "https:" ||
-      imageURL.port ||
-      imageURL.username ||
-      imageURL.password ||
-      !["cdn.discordapp.com", "media.discordapp.net"].includes(
-        imageURL.hostname,
+      const imageURL = new URL(screenshot.url);
+      if (
+        imageURL.protocol !== "https:" ||
+        imageURL.port ||
+        imageURL.username ||
+        imageURL.password ||
+        !["cdn.discordapp.com", "media.discordapp.net"].includes(
+          imageURL.hostname,
+        )
       )
-    )
-      throw new Error("Use a Discord-uploaded screenshot.");
-    const response = await fetchFn(imageURL.href, {
-      redirect: "error",
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!response.ok || !response.body)
-      throw new Error("Could not read the screenshot. Upload it again.");
-    const reader = response.body.getReader(),
-      chunks = [];
-    let length = 0;
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        length += value.byteLength;
-        if (length > MAX_IMAGE_BYTES) {
-          await reader.cancel();
-          throw new Error("Screenshot exceeds 8 MB.");
+        throw new Error("Use a Discord-uploaded screenshot.");
+      const response = await fetchFn(imageURL.href, {
+        redirect: "error",
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok || !response.body)
+        throw new Error("Could not read the screenshot. Upload it again.");
+      const reader = response.body.getReader(),
+        chunks = [];
+      let length = 0;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          length += value.byteLength;
+          if (length > MAX_IMAGE_BYTES) {
+            await reader.cancel();
+            throw new Error("Screenshot exceeds 8 MB.");
+          }
+          chunks.push(Buffer.from(value));
         }
-        chunks.push(Buffer.from(value));
+      } finally {
+        reader.releaseLock();
       }
-    } finally {
-      reader.releaseLock();
-    }
-    user.images = [Buffer.concat(chunks).toString("base64")];
+      user.images = [Buffer.concat(chunks).toString("base64")];
     }
   }
   let response;

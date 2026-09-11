@@ -12,7 +12,11 @@
     "test:ai": "node --env-file-if-exists=.env src/desktop.js test-ai",
     "register": "node --env-file-if-exists=.env src/register.js",
     "check": "node --env-file-if-exists=.env src/check.js",
-    "test": "node --test"
+    "test": "node --test",
+    "build": "node scripts/build-site.js",
+    "lint": "node scripts/validate.js",
+    "format:check": "prettier --check src dashboard site scripts test",
+    "format": "prettier --write src dashboard site scripts test"
   },
   "dependencies": {
     "discord.js": "14.27.0"

@@ -52,6 +52,20 @@ const paths = {
 const icon = (name = "grid") =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.grid}"/></svg>`;
 const pages = [
+  [
+    "coding",
+    "Coding Assistant",
+    "file",
+    "Workspace",
+    "Generate, debug, explain and review code. Nothing is executed.",
+  ],
+  [
+    "templates",
+    "Templates & Builds",
+    "box",
+    "Workspace",
+    "Design reusable layouts. Preview every change.",
+  ],
   ["overview", "Overview", "grid", "Workspace", "Your server at a glance."],
   [
     "builder",
@@ -432,11 +446,34 @@ function ai() {
           "Reply to mentions and replies",
           "Every AI answer includes a reply-to-continue hint.",
         ),
-        select("aiPersonality", "Personality", [["friendly","Friendly"],["professional","Professional"],["witty","Witty"],["nerdy","Nerdy"],["sarcastic","Gently sarcastic"]]),
-        select("aiMood", "Mood", [["cheerful","Cheerful"],["calm","Calm"],["energetic","Energetic"],["serious","Serious"]]),
-        select("aiHumor", "Humor", [["off","Off"],["light","Light humor"],["playful","Playful"]]),
-        select("aiEmoji", "Emoji usage", [["none","None"],["occasional","Occasional"],["expressive","Expressive"]]),
-        select("aiLength", "Reply length", [["brief","Brief"],["balanced","Balanced"],["detailed","Detailed"]]),
+        select("aiPersonality", "Personality", [
+          ["friendly", "Friendly"],
+          ["professional", "Professional"],
+          ["witty", "Witty"],
+          ["nerdy", "Nerdy"],
+          ["sarcastic", "Gently sarcastic"],
+        ]),
+        select("aiMood", "Mood", [
+          ["cheerful", "Cheerful"],
+          ["calm", "Calm"],
+          ["energetic", "Energetic"],
+          ["serious", "Serious"],
+        ]),
+        select("aiHumor", "Humor", [
+          ["off", "Off"],
+          ["light", "Light humor"],
+          ["playful", "Playful"],
+        ]),
+        select("aiEmoji", "Emoji usage", [
+          ["none", "None"],
+          ["occasional", "Occasional"],
+          ["expressive", "Expressive"],
+        ]),
+        select("aiLength", "Reply length", [
+          ["brief", "Brief"],
+          ["balanced", "Balanced"],
+          ["detailed", "Detailed"],
+        ]),
         json(
           "autoResponses",
           "Automatic responses",
@@ -721,6 +758,8 @@ function logLines() {
   );
 }
 const views = {
+  coding: codingPage,
+  templates: templatesPage,
   overview,
   builder,
   ai,
@@ -829,10 +868,13 @@ function render() {
       search = e.target.value;
       $("#modules").innerHTML = moduleCards();
     };
+  if (route === "coding") mountCoding();
+  if (route === "templates") mountTemplates();
   if (route === "builder" || route === "ai") {
     if (route === "builder") renderDraft();
     void mountConversations({
       api,
+      preserveInitialDraft: route === "builder" && !!draft,
       kind: route === "builder" ? "plan" : "chat",
       scope:
         (memberSession?.user.id || "owner") +
@@ -1168,3 +1210,388 @@ window.addEventListener("hashchange", () => {
     render();
 });
 setInterval(poll, memberMode ? 30000 : 2500);
+
+function codingPage() {
+  return (
+    '<section class="panel"><div class="eyebrow">Private coding workspace</div><h2>Think it through. Build it better.</h2><p>Code stays out of saved chat history. Optional context expires after 30 minutes or a host restart. Known secret patterns are redacted, but remove credentials before submitting.</p><form id="coding-form"><div class="two-fields"><label class="field">Task<select id="coding-task">' +
+    [
+      "generate",
+      "explain",
+      "debug",
+      "review",
+      "convert",
+      "test",
+      "document",
+      "optimize",
+    ]
+      .map((x) => "<option>" + x + "</option>")
+      .join("") +
+    '</select></label><label class="field">Language / target<input id="coding-language" maxlength="60" placeholder="Python, C#, TypeScript, Rust…"></label></div><label class="field">Requirements, code, or error output<textarea id="coding-prompt" rows="12" maxlength="16000" required></textarea></label><label class="field">Attach a text/code file (64 KB maximum)<input id="coding-file" type="file" accept=".txt,.md,.py,.cs,.c,.cpp,.h,.java,.js,.ts,.tsx,.jsx,.html,.css,.go,.rs,.php,.rb,.sql,.sh,.ps1,.json,.log"></label><label><input id="coding-remember" type="checkbox"> Remember this conversation temporarily</label><div class="actions"><button type="submit" class="primary">Ask seep</button><button type="button" id="coding-reset">Delete context</button><button type="button" id="coding-download" disabled>Download response</button></div><p id="coding-status" role="status"></p></form><pre id="coding-result" class="code-result" tabindex="0" aria-label="Coding response"></pre></section>'
+  );
+}
+function mountCoding() {
+  let answer = "";
+  $("#coding-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const button = e.target.querySelector("[type=submit]");
+    button.disabled = true;
+    $("#coding-status").textContent = "Thinking…";
+    try {
+      let prompt = $("#coding-prompt").value;
+      const file = $("#coding-file").files[0];
+      if (file) {
+        if (file.size > 64000) throw Error("File exceeds 64 KB.");
+        prompt += "\n" + (await file.text());
+      }
+      const result = await act("code", {
+        task: $("#coding-task").value,
+        language: $("#coding-language").value,
+        prompt,
+        remember: $("#coding-remember").checked,
+      });
+      answer = result.reply;
+      $("#coding-result").textContent = answer;
+      $("#coding-download").disabled = false;
+      $("#coding-status").textContent =
+        "Response ready · " +
+        result.remaining +
+        " requests remaining this hour · code not executed";
+    } catch (e) {
+      $("#coding-status").textContent = e.message;
+    } finally {
+      button.disabled = false;
+    }
+  };
+  $("#coding-reset").onclick = async () => {
+    try {
+      const r = await act("code", { task: "reset" });
+      answer = "";
+      $("#coding-result").textContent = "";
+      $("#coding-download").disabled = true;
+      $("#coding-status").textContent = r.reply;
+    } catch (e) {
+      notify(e.message);
+    }
+  };
+  $("#coding-download").onclick = () => download("seep-code.md", answer);
+}
+let templateEditor = null;
+function templatesPage() {
+  return (
+    '<div class="columns"><section class="panel"><h2>Your next community</h2><p>Private, versioned structural templates. Staff permissions, messages, integrations and branding are excluded.</p><label class="field">Starter<select id="template-theme">' +
+    [
+      "gaming",
+      "development",
+      "education",
+      "creators",
+      "support",
+      "business",
+      "study",
+      "roleplay",
+      "esports",
+      "marketplace",
+      "friends",
+    ]
+      .map((x) => "<option>" + x + "</option>")
+      .join("") +
+    '</select></label><div class="actions"><button id="template-preset">Load starter</button><button id="template-copy">Copy this server</button></div><label class="field">Import Seep JSON<input type="file" id="template-file" accept=".json"></label><label class="field">Template name<input id="template-name" maxlength="80" value="My community"></label><div id="template-editor"></div><div class="actions"><button id="template-save">Save privately</button><button id="template-export">Export JSON</button><button id="template-preview" class="primary">Preview build</button></div><p id="template-status" role="status"></p></section><section class="panel"><h2>Saved templates</h2><div id="template-list">Loading…</div><h2>Build history</h2><button id="build-refresh">Refresh progress</button><div id="build-history"></div><p>Cancellation stops between operations. Completed changes remain. Resume reuses matching channels and roles. Automatic deletion/rollback is unavailable; review created items before manual removal.</p></section></div>'
+  );
+}
+function mountTemplates() {
+  const status = (t) => ($("#template-status").textContent = t);
+  let dragged = null;
+  const paint = () => {
+    const el = $("#template-editor");
+    if (!templateEditor) {
+      el.textContent =
+        "Load a starter, import a template, or copy your server.";
+      return;
+    }
+    el.innerHTML =
+      '<label class="field">Ordinary roles (comma separated)<input id="template-roles" value="' +
+      esc(templateEditor.plan.roles.join(", ")) +
+      '"></label>' +
+      templateEditor.plan.categories
+        .map(
+          (c, ci) =>
+            '<section class="channel-preview"><label class="field">Category<input data-category="' +
+            ci +
+            '" value="' +
+            esc(c.name) +
+            '"></label><label><input type="checkbox" data-private="' +
+            ci +
+            '" ' +
+            (c.private ? "checked" : "") +
+            "> Private staff area</label>" +
+            c.channels
+              .map(
+                (ch, i) =>
+                  '<div class="template-row" draggable="true" data-row="' +
+                  ci +
+                  ":" +
+                  i +
+                  '"><input aria-label="Channel name" data-name="' +
+                  ci +
+                  ":" +
+                  i +
+                  '" value="' +
+                  esc(ch.name) +
+                  '"><select aria-label="Channel type" data-type="' +
+                  ci +
+                  ":" +
+                  i +
+                  '">' +
+                  ["text", "voice", "forum", "announcement", "stage", "media"]
+                    .map(
+                      (t) =>
+                        "<option " +
+                        (ch.type === t ? "selected" : "") +
+                        ">" +
+                        t +
+                        "</option>",
+                    )
+                    .join("") +
+                  '</select><button data-up="' +
+                  ci +
+                  ":" +
+                  i +
+                  '" aria-label="Move channel up">↑</button><button data-down="' +
+                  ci +
+                  ":" +
+                  i +
+                  '" aria-label="Move channel down">↓</button><button data-remove="' +
+                  ci +
+                  ":" +
+                  i +
+                  '" aria-label="Remove channel from draft">×</button></div>',
+              )
+              .join("") +
+            '<button data-add="' +
+            ci +
+            '">Add channel</button></section>',
+        )
+        .join("") +
+      '<button id="category-add">Add category</button>';
+    $("#template-roles").onchange = (e) =>
+      (templateEditor.plan.roles = e.target.value
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean));
+    el.querySelectorAll("[data-category]").forEach(
+      (e) =>
+        (e.onchange = () =>
+          (templateEditor.plan.categories[+e.dataset.category].name = e.value)),
+    );
+    el.querySelectorAll("[data-private]").forEach(
+      (e) =>
+        (e.onchange = () =>
+          (templateEditor.plan.categories[+e.dataset.private].private =
+            e.checked)),
+    );
+    for (const key of ["name", "type"])
+      el.querySelectorAll("[data-" + key + "]").forEach(
+        (e) =>
+          (e.onchange = () => {
+            const [c, i] = e.dataset[key].split(":").map(Number);
+            templateEditor.plan.categories[c].channels[i][key] = e.value;
+          }),
+      );
+    for (const key of ["up", "down", "remove"])
+      el.querySelectorAll("[data-" + key + "]").forEach(
+        (e) =>
+          (e.onclick = () => {
+            const [c, i] = e.dataset[key].split(":").map(Number),
+              a = templateEditor.plan.categories[c].channels,
+              j = i + (key === "up" ? -1 : 1);
+            if (key === "remove") a.splice(i, 1);
+            else if (j >= 0 && j < a.length) [a[i], a[j]] = [a[j], a[i]];
+            paint();
+          }),
+      );
+    el.querySelectorAll("[data-add]").forEach(
+      (e) =>
+        (e.onclick = () => {
+          templateEditor.plan.categories[+e.dataset.add].channels.push({
+            name: "new-channel",
+            type: "text",
+          });
+          paint();
+        }),
+    );
+    $("#category-add").onclick = () => {
+      templateEditor.plan.categories.push({
+        name: "NEW CATEGORY",
+        private: false,
+        channels: [{ name: "general", type: "text" }],
+      });
+      paint();
+    };
+    el.querySelectorAll("[data-row]").forEach((e) => {
+      e.ondragstart = () => (dragged = e.dataset.row);
+      e.ondragover = (v) => v.preventDefault();
+      e.ondrop = (v) => {
+        v.preventDefault();
+        if (!dragged) return;
+        const [a, b] = dragged.split(":").map(Number),
+          [c, d] = e.dataset.row.split(":").map(Number);
+        const item = templateEditor.plan.categories[a].channels.splice(b, 1)[0];
+        templateEditor.plan.categories[c].channels.splice(d, 0, item);
+        dragged = null;
+        paint();
+      };
+    });
+  };
+  const value = () => {
+    if (!templateEditor) throw Error("Load a template first.");
+    templateEditor.name = $("#template-name").value;
+    return templateEditor;
+  };
+  const run = (fn) => async () => {
+    try {
+      await fn();
+    } catch (e) {
+      status(e.message);
+    }
+  };
+  const list = async () => {
+    const rows = await act("template-list");
+    $("#template-list").innerHTML =
+      rows
+        .map(
+          (x) =>
+            '<div class="actions"><button data-load="' +
+            x.id +
+            '">' +
+            esc(x.name) +
+            '</button><button data-delete-template="' +
+            x.id +
+            '">Delete</button></div>',
+        )
+        .join("") || "<p>No saved templates.</p>";
+    document.querySelectorAll("[data-load]").forEach(
+      (e) =>
+        (e.onclick = run(async () => {
+          templateEditor = await act("template-export", { id: e.dataset.load });
+          $("#template-name").value = templateEditor.name;
+          paint();
+        })),
+    );
+    document.querySelectorAll("[data-delete-template]").forEach(
+      (e) =>
+        (e.onclick = run(async () => {
+          if (
+            await confirmAction(
+              "Delete template?",
+              "This removes only your saved template.",
+            )
+          ) {
+            await act("template-delete", {
+              id: e.dataset.deleteTemplate,
+              confirm: true,
+            });
+            await list();
+          }
+        })),
+    );
+  };
+  const jobs = async () => {
+    const rows = await act("build-history");
+    $("#build-history").innerHTML =
+      rows
+        .reverse()
+        .map(
+          (x) =>
+            '<div class="channel-preview"><strong>' +
+            esc(x.status) +
+            "</strong><p>" +
+            x.created.length +
+            " items created · " +
+            esc(new Date(x.started).toLocaleString()) +
+            "</p><p>" +
+            esc(x.error || "") +
+            '</p><button data-resume="' +
+            x.id +
+            '">Preview resume</button>' +
+            (x.status === "running"
+              ? '<button data-cancel-build="' + x.id + '">Cancel</button>'
+              : "") +
+            "</div>",
+        )
+        .join("") || "<p>No builds yet.</p>";
+    document.querySelectorAll("[data-resume]").forEach(
+      (e) =>
+        (e.onclick = run(async () => {
+          draft = await act("build-resume-preview", { id: e.dataset.resume });
+          navigate("builder");
+        })),
+    );
+    document.querySelectorAll("[data-cancel-build]").forEach(
+      (e) =>
+        (e.onclick = run(async () => {
+          await act("build-cancel", { id: e.dataset.cancelBuild });
+          await jobs();
+        })),
+    );
+  };
+  $("#template-preset").onclick = run(async () => {
+    const r = await act("template-preview", {
+      theme: $("#template-theme").value,
+    });
+    templateEditor = {
+      format: "seep-template",
+      version: 1,
+      name: $("#template-theme").value,
+      plan: r.plan,
+    };
+    $("#template-name").value = templateEditor.name;
+    paint();
+  });
+  $("#template-copy").onclick = run(async () => {
+    const r = await act("template-copy", { name: $("#template-name").value });
+    templateEditor = {
+      format: r.format,
+      version: r.version,
+      name: r.name,
+      plan: r.plan,
+    };
+    paint();
+    await list();
+    status(
+      "Structure saved. No messages or privileged role permissions copied.",
+    );
+  });
+  $("#template-file").onchange = run(async () => {
+    const f = $("#template-file").files[0];
+    if (!f) return;
+    if (f.size > 128000) throw Error("Maximum 128 KB.");
+    const t = JSON.parse(await f.text());
+    const r = await act("template-preview", { template: t });
+    templateEditor = {
+      format: "seep-template",
+      version: 1,
+      name: t.name,
+      plan: r.plan,
+    };
+    $("#template-name").value = t.name;
+    paint();
+    status("Import validated. Review before saving or building.");
+  });
+  $("#template-save").onclick = run(async () => {
+    await act("template-save", { template: value() });
+    await list();
+    status("Saved privately.");
+  });
+  $("#template-export").onclick = run(async () => {
+    download("seep-template.json", JSON.stringify(value(), null, 2));
+  });
+  $("#template-preview").onclick = run(async () => {
+    draft = await act("template-preview", { template: value() });
+    navigate("builder");
+  });
+  $("#build-refresh").onclick = run(jobs);
+  paint();
+  void run(async () => {
+    await list();
+    await jobs();
+  })();
+}

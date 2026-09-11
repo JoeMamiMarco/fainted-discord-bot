@@ -96,3 +96,11 @@ The default is Qwen3-VL 4B Instruct. A ten-channel layout test took about 24 sec
 ### Personality
 In AI Assistant, server administrators can set personality, mood, humor, emoji frequency and reply length. Settings are saved per server and apply to dashboard chats and Discord mention/reply conversations. Defaults are friendly, cheerful, light humor, occasional emoji and balanced length. These are model instructions, not guaranteed formatting; they do not affect moderation classification or server building.
 
+
+## Website, coding and templates
+
+The public site builds with `pnpm run build` into `site-dist/` and deploys through GitHub Pages. It includes documentation, a command directory and a browser template editor. The working Discord dashboard requires a separately hosted backend; Pages cannot run the bot or AI.
+
+Use the Coding Assistant dashboard or `/code` for generation, explanation, debugging, review and tests. Code is never executed. Optional context expires after 30 minutes and can be deleted. Local AI is the default; an optional compatible provider can be configured server-side.
+
+Templates & Builds includes 11 presets, private saves, structural imports/exports, editable channels, preview, build history, cancellation and resume previews. Full rollback and privileged permission copying are not implemented. See [hosting instructions](docs/HOSTING.md) for deployment and security boundaries.

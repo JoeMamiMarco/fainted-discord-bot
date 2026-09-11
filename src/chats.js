@@ -59,7 +59,10 @@ export class Chats {
     try {
       const context = chat.messages
         .slice(-6)
-        .map((m) => `${m.role}: ${m.draft ? JSON.stringify(m.draft.plan) : m.content}`)
+        .map(
+          (m) =>
+            `${m.role}: ${m.draft ? JSON.stringify(m.draft.plan) : m.content}`,
+        )
         .join("\n")
         .slice(-2200);
       chat.messages.push({ role: "user", content: text, time: Date.now() });

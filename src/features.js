@@ -13,6 +13,14 @@ import { card, validateEmbed } from "./presentation.js";
 import { validatePatch, channelKeys, roleKeys } from "./feature-config.js";
 import { guardSelfRole, level, template } from "./policy.js";
 import { generatePlan, applyPlan, validatePlan } from "./planner.js";
+import { coding, readCodeAttachment } from "./coding.js";
+import {
+  Templates,
+  portable,
+  preset,
+  snapshotTemplate,
+  cleanTemplate,
+} from "./templates.js";
 import { localChat, MentionReplies } from "./ai-chat.js";
 
 const quiet = { parse: [], repliedUser: false };
@@ -185,10 +193,65 @@ export class Features {
   }
   async action(action, p = {}, actor = "owner") {
     const g = await this.guild();
+    if (action === "code") return coding.run(g.id + ":" + actor, p);
+    const templates = new Templates(this.store, g.id, actor);
+    if (action === "template-list") return templates.list();
+    if (action === "template-save") return templates.save(p.template);
+    if (action === "template-export") return templates.get(p.id);
+    if (action === "template-delete") {
+      if (p.confirm !== true) throw new Error("Confirm template deletion.");
+      return templates.remove(p.id);
+    }
+    if (action === "template-copy")
+      return templates.save(await snapshotTemplate(g, actor, p.name));
+    if (action === "template-preview") {
+      const value = p.theme
+        ? portable(p.theme, preset(p.theme))
+        : p.template
+          ? cleanTemplate(p.template)
+          : templates.get(p.id);
+      const token = randomUUID();
+      const draft = {
+        plan: value.plan,
+        actor,
+        expires: Date.now() + 15 * 60000,
+      };
+      this.plans.set(token, draft);
+      this.store.set(g.id, "draft:" + token, draft);
+      return { plan: value.plan, token };
+    }
+    if (action === "build-history")
+      return this.store
+        .items(g.id, "build:")
+        .filter((x) => x.actor === actor)
+        .map(({ plan, ...job }) => job)
+        .slice(-50);
+    if (action === "build-cancel") {
+      const job = this.store.get(g.id, "build:" + p.id);
+      if (!job || job.actor !== actor) throw new Error("Build not found.");
+      this.store.set(g.id, "cancel:" + p.id, true);
+      return {
+        message:
+          "Cancellation requested; the current Discord operation may finish.",
+      };
+    }
+    if (action === "build-resume-preview") {
+      const job = this.store.get(g.id, "build:" + p.id);
+      if (!job || job.actor !== actor) throw new Error("Build not found.");
+      return this.action(
+        "template-preview",
+        { template: portable("Resume build", job.plan) },
+        actor,
+      );
+    }
     if (action === "snapshot") return this.snapshot();
     if (action === "settings") return this.settings(p);
     if (action === "chat")
-      return { reply: await localChat(String(p.question || ""), { personality: this.store.config(g.id) }) };
+      return {
+        reply: await localChat(String(p.question || ""), {
+          personality: this.store.config(g.id),
+        }),
+      };
     if (action === "analyze")
       return {
         reply: await localChat(
@@ -223,18 +286,65 @@ export class Features {
       for (const [id, x] of this.plans)
         if (x.expires < Date.now()) this.plans.delete(id);
       this.plans.set(token, { plan, actor, expires: Date.now() + 15 * 60000 });
+      this.store.set(g.id, "draft:" + token, this.plans.get(token));
       return { plan, token };
     }
     if (action === "build")
       return this.bot.serial(`build:${g.id}`, async () => {
-        const draft = this.plans.get(p.token);
+        const draft =
+          this.plans.get(p.token) || this.store.get(g.id, "draft:" + p.token);
         if (!draft || draft.actor !== actor || draft.expires < Date.now())
           throw new Error("Generate a fresh preview before building.");
-        const result = await applyPlan(
-          g,
-          draft.plan,
-          this.store.config(g.id).supportRole,
-        );
+        await g.channels.fetch();
+        await g.roles.fetch();
+        const job = {
+          id: p.token,
+          actor,
+          plan: draft.plan,
+          before: {
+            channels: [...g.channels.cache.keys()],
+            roles: [...g.roles.cache.keys()],
+          },
+          created: [],
+          status: "running",
+          started: Date.now(),
+        };
+        this.store.set(g.id, "build:" + p.token, job);
+        let result;
+        try {
+          result = await applyPlan(
+            g,
+            draft.plan,
+            this.store.config(g.id).supportRole,
+            (created) => {
+              job.created = [...created];
+              job.updated = Date.now();
+              this.store.set(g.id, "build:" + p.token, job);
+              if (this.store.get(g.id, "cancel:" + p.token))
+                throw new Error(
+                  "Build cancelled. Existing changes are retained; preview a resume from Build history.",
+                );
+            },
+          );
+          job.status = "completed";
+        } catch (error) {
+          job.status = this.store.get(g.id, "cancel:" + p.token)
+            ? "cancelled"
+            : "failed";
+          job.error = error.message;
+          throw error;
+        } finally {
+          job.updated = Date.now();
+          this.store.set(g.id, "build:" + p.token, job);
+          this.store.record(
+            g.id,
+            actor,
+            actor,
+            "server-build",
+            job.status + "; created " + job.created.length + " items",
+          );
+        }
+        this.store.delete(g.id, "draft:" + p.token);
         this.plans.delete(p.token);
         await this.bot.log(
           g,
@@ -619,6 +729,105 @@ export class Features {
     };
   }
   async interaction(i) {
+    if (
+      i.isChatInputCommand?.() &&
+      ["code", "template"].includes(i.commandName)
+    ) {
+      await i.deferReply({ flags: MessageFlags.Ephemeral });
+      try {
+        const task = i.options.getSubcommand();
+        if (i.commandName === "code") {
+          const attachment =
+            task === "reset" ? null : i.options.getAttachment("file");
+          const prompt =
+            task === "reset"
+              ? ""
+              : (i.options.getString("prompt") || "") +
+                (attachment
+                  ? "\n" + (await readCodeAttachment(attachment))
+                  : "");
+          const result = await this.action(
+            "code",
+            {
+              task,
+              prompt,
+              language:
+                task === "reset" ? null : i.options.getString("language"),
+              remember:
+                task === "reset" ? false : i.options.getBoolean("remember"),
+            },
+            i.user.id,
+          );
+          await i.editReply({
+            content:
+              result.reply.length > 1800
+                ? "Your coding response is attached. Code has not been executed."
+                : result.reply,
+            files:
+              result.reply.length > 1800
+                ? [
+                    new AttachmentBuilder(Buffer.from(result.reply), {
+                      name: "seep-code.md",
+                    }),
+                  ]
+                : [],
+            allowedMentions: quiet,
+          });
+        } else {
+          const member = await i.guild.members.fetch(i.user.id);
+          if (!member.permissions.has(P.Administrator))
+            throw new Error("Administrator is required for templates.");
+          let result;
+          if (task === "import")
+            result = await this.action(
+              "template-save",
+              {
+                template: JSON.parse(
+                  await readCodeAttachment(i.options.getAttachment("file")),
+                ),
+              },
+              i.user.id,
+            );
+          else
+            result = await this.action(
+              {
+                list: "template-list",
+                create: "template-copy",
+                preset: "template-preview",
+                preview: "template-preview",
+                export: "template-export",
+                delete: "template-delete",
+              }[task],
+              {
+                id: i.options.getString("id"),
+                name: i.options.getString("name"),
+                theme: i.options.getString("theme"),
+                confirm: i.options.getBoolean("confirm"),
+              },
+              i.user.id,
+            );
+          await i.editReply({
+            content:
+              task === "preview" || task === "preset"
+                ? "Preview attached. Open Templates in the dashboard to review and apply; no server changes made."
+                : "Template operation completed.",
+            files: [
+              new AttachmentBuilder(
+                Buffer.from(JSON.stringify(result, null, 2)),
+                { name: "seep-template.json" },
+              ),
+            ],
+            allowedMentions: quiet,
+          });
+        }
+      } catch (e) {
+        await i.editReply({
+          content: e.message.slice(0, 1900),
+          allowedMentions: quiet,
+        });
+      }
+      return true;
+    }
     if (
       !i.isButton() ||
       !i.customId.startsWith("feature:") ||

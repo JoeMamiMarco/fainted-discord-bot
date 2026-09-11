@@ -269,7 +269,8 @@ export function createMemberDashboard({
           bytes = 0;
         for await (const chunk of req) {
           bytes += chunk.length;
-          if (bytes > (path === "/api/chats" ? 12000000 : 75000)) return send(413, { error: "Request too large." });
+          if (bytes > (path === "/api/chats" ? 12000000 : 75000))
+            return send(413, { error: "Request too large." });
           text += chunk;
         }
         body = JSON.parse(text || "{}");
@@ -321,15 +322,13 @@ export function createMemberDashboard({
         const installed = await controller.request("guilds");
         return send(
           200,
-          guilds
-            .filter(canManage)
-            .map((g) => ({
-              id: g.id,
-              name: g.name,
-              icon: g.icon,
-              installed: installed.includes(g.id),
-              invite: `https://discord.com/oauth2/authorize?client_id=${cfg.clientId}&scope=bot%20applications.commands&permissions=0&guild_id=${g.id}&disable_guild_select=true`,
-            })),
+          guilds.filter(canManage).map((g) => ({
+            id: g.id,
+            name: g.name,
+            icon: g.icon,
+            installed: installed.includes(g.id),
+            invite: `https://discord.com/oauth2/authorize?client_id=${cfg.clientId}&scope=bot%20applications.commands&permissions=0&guild_id=${g.id}&disable_guild_select=true`,
+          })),
         );
       }
       const guildId =

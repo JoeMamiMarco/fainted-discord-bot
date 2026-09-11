@@ -160,7 +160,7 @@ test("layout preview tokens are bound to their creator and guild", async () => {
         ]),
       },
     },
-    store = { config: () => ({}) },
+    store = { config: () => ({}), set: () => {}, get: () => null },
     bot = { serial: async (_, fn) => fn() };
   const f = new Features(client, store, bot, "g"),
     other = new Features(client, store, bot, "other");

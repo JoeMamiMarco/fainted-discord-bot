@@ -375,7 +375,7 @@ if (process.env.SEEP_PANEL === "1") {
   const controls = createInterface({ input: process.stdin });
   controls.on("line", (line) => {
     if (line.trim() === "stop") shutdown();
-    else if (line.startsWith("@@REQUEST ") && line.length < 80000) {
+    else if (line.startsWith("@@REQUEST ") && line.length < 12000000) {
       let request;
       try {
         request = JSON.parse(line.slice(10));
